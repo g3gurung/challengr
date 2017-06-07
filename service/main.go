@@ -4,6 +4,7 @@ import (
 	"log"
 	"mime"
 	"net/http"
+	"os"
 	"time"
 
 	"github.com/aws/aws-sdk-go/aws"
@@ -21,11 +22,12 @@ var svc *s3.S3
 const bucketName = "challengrPost"
 
 func init() {
-	config := aws.NewConfig().WithRegion("eu-west-1")
-	config.WithCredentials(credentials.NewStaticCredentials("AKIAJZXILDFBECZXALOQ", "YiwmeitY+Orp4Mx8v1M+0rRHByV5ENLN2NX4QVvU", ""))
+	config := aws.NewConfig().WithRegion(os.Getenv("PORT"))
+	config.WithCredentials(credentials.NewStaticCredentials(os.Getenv("AWS-ID"), os.Getenv("AWS-KEY"), ""))
 	svc = s3.New(session.New(config))
 }
 
+//PreSignS3 func is a handler for pres signing the put object url for direct s3 upload
 func PreSignS3(c *gin.Context) {
 	fileName := c.Query("file-name")
 	if fileName == "" {
