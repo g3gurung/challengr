@@ -12,6 +12,7 @@ type User struct {
 	ID            int64      `json:"id" sql:"id"`
 	Name          *string    `json:"name" sql:"name"`
 	Email         *string    `json:"email" sql:"email"`
+	Role          string     `json:"-" sql:"role"`
 	Gender        *string    `json:"gender" sql:"gender"`
 	DOB           *string    `json:"date_of_birth" sql:"date_of_birth"`
 	FacebookToken *string    `json:"facebook_token" sql:"facebook_token"`

@@ -7,7 +7,7 @@ type Post struct {
 	ContentType string `json:"content_type" binding:"required" sql:"content_type"`
 	ContentSize int64  `json:"content_size" binding:"required" sql:"content_size"`
 
-	Hearts []*Heart `json:"hearts" sql:"-"`
+	Likes []*Like `json:"likes" sql:"-"`
 
 	Payload map[string]interface{} `json:"-"`
 }
@@ -16,7 +16,6 @@ type Post struct {
 func (p *Post) ParseNotAllowedJSON() []string {
 	errSlice := []string{}
 
-	delete(p.Payload, "id")
 	delete(p.Payload, "file_url")
 	delete(p.Payload, "content_type")
 	delete(p.Payload, "content_size")
