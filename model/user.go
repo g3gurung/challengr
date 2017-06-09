@@ -11,23 +11,20 @@ import (
 	jwt "github.com/dgrijalva/jwt-go"
 )
 
-//imei struct is a model/schema for imei table
-type imei struct {
-	ID string `json:"id" sql:"id"`
-}
-
 //User struct is a model/schema for user table
 type User struct {
 	ID             int64      `json:"id" sql:"id"`
-	Name           *string    `json:"name" sql:"name"`
-	Email          *string    `json:"email" sql:"email"`
-	FacebookUserID *string    `json:"facebook_user_id" sql:"facebook_user_id"`
+	Name           string     `json:"name" sql:"name"`
+	Email          string     `json:"email" sql:"email"`
+	FacebookUserID string     `json:"facebook_user_id" sql:"facebook_user_id"`
 	Role           string     `json:"-" sql:"role"`
-	Gender         *string    `json:"gender" sql:"gender"`
-	DOB            *string    `json:"date_of_birth" sql:"date_of_birth"`
-	Token          string     `json:"token,omitempty" sql:"-"`
+	Gender         string     `json:"gender" sql:"gender"`
+	DOB            string     `json:"date_of_birth" sql:"date_of_birth"`
+	Weight         *int       `json:"weight" sql:"weight"`
 	CreatedAt      *time.Time `json:"created_at" sql:"created_at"`
 	UpdatedAt      *time.Time `json:"updated_at" sql:"updated_at"`
+
+	Token string `json:"token,omitempty" sql:"-"`
 
 	Payload map[string]interface{} `json:"-"`
 }
@@ -37,7 +34,7 @@ func (u *User) CreateTokenString() string {
 	// Embed User information to `token`
 	token := jwt.NewWithClaims(jwt.GetSigningMethod("HS256"), &JWTUser{
 		ID:             u.ID,
-		FacebookUserID: *u.FacebookUserID,
+		FacebookUserID: u.FacebookUserID,
 	})
 	// token -> string. Only server knows this secret (foobar).
 	tokenstring, err := token.SignedString([]byte(JWTSecret))
@@ -52,8 +49,6 @@ func (u *User) ParseNotAllowedJSON() []string {
 	errSlice := []string{}
 
 	delete(u.Payload, "name")
-	delete(u.Payload, "email")
-	delete(u.Payload, "facebook_user_id")
 	delete(u.Payload, "role")
 	delete(u.Payload, "gender")
 	delete(u.Payload, "date_of_birth")
@@ -142,17 +137,40 @@ func (u *User) Update() error {
 	values := make(map[int]interface{})
 	index := 0
 
-	if *u.Name != "" {
-		values[index] = *u.Name
+	if u.Name != "" {
+		values[index] = u.Name
 		index = index + 1
 		sets = append(sets, "name=$"+strconv.Itoa(index))
+	}
 
+	if u.Role != "" {
+		values[index] = u.Role
+		index = index + 1
+		sets = append(sets, "role=$"+strconv.Itoa(index))
+	}
+
+	if u.Gender != "" {
+		values[index] = u.Gender
+		index = index + 1
+		sets = append(sets, "gender=$"+strconv.Itoa(index))
+	}
+
+	if u.DOB != "" {
+		values[index] = u.DOB
+		index = index + 1
+		sets = append(sets, "date_of_birth=$"+strconv.Itoa(index))
+	}
+
+	if u.Weight != nil {
+		values[index] = *u.Weight
+		index = index + 1
+		sets = append(sets, "weight=$"+strconv.Itoa(index))
 	}
 
 	if u.UpdatedAt != nil {
-		values[index] = *u.UpdatedAt
+		values[index] = u.UpdatedAt
 		index = index + 1
-		sets = append(sets, "email=$"+strconv.Itoa(index))
+		sets = append(sets, "updated_at=$"+strconv.Itoa(index))
 	}
 
 	stmt, err := db.Prepare("UPDATE hub SET " + strings.Join(sets, ", ") + " WHERE id=" + fmt.Sprintf("%v", u.ID) + ";")
@@ -180,6 +198,49 @@ func (u *User) Update() error {
 	if affected == 0 {
 		log.Printf("rows effected -> %v", affected)
 		return errors.New("Server error")
+	}
+
+	return nil
+}
+
+//Delete func deletes the user. Delete meaning it doesnt purge it. Just hides it.
+func (u *User) Delete() error {
+	count, err := u.Count("WHERE id=$1", u.ID)
+	if err != nil {
+		log.Printf("User delete: error on fetching User record count: %v", err)
+		return err
+	}
+
+	if count == 0 {
+		err = fmt.Errorf("User account not found-> id %v, total found %v", u.ID, count)
+		log.Printf("%v", err)
+		return err
+	} else if count == 1 {
+		stmt, err := db.Prepare("UPDATE users SET deleted_at=$1 WHERE id=$2;")
+		if err != nil {
+			log.Printf("create prepare statement error: %v", err)
+			return err
+		}
+
+		res, err := stmt.Exec(time.Now(), u.ID)
+		if err != nil {
+			log.Printf("exec statement error: %v", err)
+			return err
+		}
+
+		affected, err := res.RowsAffected()
+		if err != nil {
+			log.Printf("rows effected error: %v", err)
+			return err
+		}
+		if affected == 0 {
+			log.Printf("rows effected -> %v", affected)
+			return errors.New("Server error")
+		}
+	} else {
+		err = fmt.Errorf("multiple Users found-> id %v, total found %v", u.ID, count)
+		log.Printf("%v", err)
+		return err
 	}
 
 	return nil

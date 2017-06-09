@@ -11,6 +11,8 @@ import (
 //Post struct is a model/schema for post table
 type Post struct {
 	ID          int64      `json:"id" sql:"id"`
+	UserID      int64      `json:"user_id" sql:"user_id"`
+	ChallengeID int64      `json:"challenge_id" sql:"challenge_id"`
 	FileURL     string     `json:"file_url" sql:"file_url"`
 	ContentType string     `json:"content_type" sql:"content_type"`
 	ContentSize int64      `json:"content_size" sql:"content_size"`
@@ -61,13 +63,13 @@ func (p *Post) Create() error {
 	now := time.Now()
 	p.CreatedAt = &now
 
-	stmt, err := db.Prepare("INSERT INTO posts(file_url, content_type, content_size, created_at) VALUES($1,$2,$3,$4);")
+	stmt, err := db.Prepare("INSERT INTO posts(user_id, challenge_id, file_url, content_type, content_size, created_at) VALUES($1,$2,$3,$4,$5,$6);")
 	if err != nil {
 		log.Printf("create prepare statement error: %v", err)
 		return err
 	}
 
-	res, err := stmt.Exec(p.FileURL, p.ContentType, p.ContentSize, p.CreatedAt)
+	res, err := stmt.Exec(p.UserID, p.ChallengeID, p.FileURL, p.ContentType, p.ContentSize, p.CreatedAt)
 	if err != nil {
 		log.Printf("exec statement error: %v", err)
 		return err
@@ -151,13 +153,13 @@ func (p *Post) Delete() error {
 		log.Printf("%v", err)
 		return err
 	} else if count == 1 {
-		stmt, err := db.Prepare("DELETE FROM posts WHERE id=$1;")
+		stmt, err := db.Prepare("UPDATE posts SET deleted_at=$1 WHERE id=$2;")
 		if err != nil {
 			log.Printf("create prepare statement error: %v", err)
 			return err
 		}
 
-		res, err := stmt.Exec(p.ID)
+		res, err := stmt.Exec(time.Now(), p.ID)
 		if err != nil {
 			log.Printf("exec statement error: %v", err)
 			return err
