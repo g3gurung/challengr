@@ -10,6 +10,9 @@ import (
 //roleUser is used for assigning role to an user
 const roleUser = "user"
 
+//JWTSecret is user for encrypting and decrypting jwt
+const JWTSecret = "challengr app secret"
+
 var db *sql.DB
 
 func init() {

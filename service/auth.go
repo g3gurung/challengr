@@ -77,6 +77,7 @@ func LogIn(c *gin.Context) {
 	}
 
 	if count != 0 {
+		user.Token = user.CreateTokenString()
 		c.JSON(http.StatusOK, &user)
 		return
 	}
@@ -86,9 +87,46 @@ func LogIn(c *gin.Context) {
 		return
 	}
 
+	user.Token = user.CreateTokenString()
+	c.JSON(http.StatusOK, &user)
 }
 
 //LogOut func handler logs out a user based on an user_id and imei
 func LogOut(c *gin.Context) {
+	var logOut model.LogOut
+	if err := c.BindJSON(&logOut); err != nil {
+		log.Printf("logOut struct JSON bind error: %v", err)
+		c.JSON(http.StatusBadRequest, &model.ErrResp{Error: "Invalid logOut payload"})
+		return
+	}
 
+	if err := c.BindJSON(&logOut.Payload); err != nil {
+		log.Printf("logOut Payload JSON bind error: %v", err)
+		c.JSON(http.StatusBadRequest, &model.ErrResp{Error: "Invalid logOut payload"})
+		return
+	}
+
+	if errSlice := logOut.ParseNotAllowedJSON(); len(errSlice) > 0 {
+		log.Printf("logOut not allowed fields detected: %v", errSlice)
+		c.JSON(http.StatusBadRequest, &model.ErrResp{Error: "Some fields are not allowed", Fields: &errSlice})
+		return
+	}
+
+	if errSlice := logOut.Validate(); len(errSlice) > 0 {
+		log.Printf("logOut post validate err: %v", errSlice)
+		c.JSON(http.StatusBadRequest, &model.ErrResp{Error: "Invalid fields detected", Fields: &errSlice})
+		return
+	}
+
+	logOut.UserID = c.MustGet("user_id").(int64)
+
+	oneSignal := model.OneSignal{UserID: logOut.UserID, Imei: logOut.Imei}
+
+	if err := oneSignal.Delete(); err != nil {
+		log.Printf("Delete onesignal error: %v", err)
+		c.JSON(http.StatusInternalServerError, &model.ErrResp{Error: "Server error"})
+		return
+	}
+
+	c.JSON(http.StatusOK, &model.SuccessResp{Status: http.StatusOK, Message: "Successfully logged out"})
 }

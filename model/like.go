@@ -8,3 +8,13 @@ type Like struct {
 	UserID    string    `json:"user_id" sql:"user_id"`
 	CreatedAt time.Time `json:"created_at" sql:"created_at"`
 }
+
+//Delete func deletes a like
+func (l *Like) Delete() error {
+	return nil
+}
+
+//Create func creates a new like
+func (l *Like) Create() error {
+	return nil
+}

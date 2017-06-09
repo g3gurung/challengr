@@ -7,6 +7,8 @@ import (
 	"strconv"
 	"strings"
 	"time"
+
+	jwt "github.com/dgrijalva/jwt-go"
 )
 
 //imei struct is a model/schema for imei table
@@ -23,10 +25,26 @@ type User struct {
 	Role           string     `json:"-" sql:"role"`
 	Gender         *string    `json:"gender" sql:"gender"`
 	DOB            *string    `json:"date_of_birth" sql:"date_of_birth"`
+	Token          string     `json:"token,omitempty" sql:"-"`
 	CreatedAt      *time.Time `json:"created_at" sql:"created_at"`
 	UpdatedAt      *time.Time `json:"updated_at" sql:"updated_at"`
 
 	Payload map[string]interface{} `json:"-"`
+}
+
+//CreateTokenString func creates a new jwt token
+func (u *User) CreateTokenString() string {
+	// Embed User information to `token`
+	token := jwt.NewWithClaims(jwt.GetSigningMethod("HS256"), &JWTUser{
+		ID:             u.ID,
+		FacebookUserID: *u.FacebookUserID,
+	})
+	// token -> string. Only server knows this secret (foobar).
+	tokenstring, err := token.SignedString([]byte(JWTSecret))
+	if err != nil {
+		log.Fatalln(err)
+	}
+	return tokenstring
 }
 
 //ParseNotAllowedJSON unmarshalls JSON payload to struct payload and fields. Plus parses the JSON payload.
@@ -53,7 +71,7 @@ func (u *User) Create() error {
 	u.CreatedAt = &now
 	u.Role = roleUser
 
-	stmt, err := db.Prepare("INSERT INTO users(name, email, facebook_user_id, role, gender, date_of_birth, created, updated) VALUES($1,$2,$3,$4,$5,$6,$7,$8);")
+	stmt, err := db.Prepare("INSERT INTO users(name, email, facebook_user_id, role, gender, date_of_birth, created_at, updated_at) VALUES($1,$2,$3,$4,$5,$6,$7,$8);")
 	if err != nil {
 		log.Printf("Save ticket: create prepare statement error: %v", err)
 		return err

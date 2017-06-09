@@ -19,6 +19,16 @@ func DeletePost(c *gin.Context) {
 
 }
 
+//FlagPost func is a handler for flagging a post
+func FlagPost(c *gin.Context) {
+
+}
+
+//UnFlagPost func is a handler or unflagging a post
+func UnFlagPost(c *gin.Context) {
+
+}
+
 //LikePost func is a handler for licking a post
 func LikePost(c *gin.Context) {
 
