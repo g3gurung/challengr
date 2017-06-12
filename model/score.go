@@ -149,7 +149,7 @@ func (s *Score) UpdateCoins(amount int64) (int, error) {
 }
 
 //ResetLikes func updates likes on db
-func (s *Score) ResetLikes(amount int64) (int, error) {
+func (s *Score) ResetLikes(amount int) (int, error) {
 	count, err := s.Count("WHERE id=$1 AND user_id=$2 AND likes_remaining=0 AND likes_updated_at < NOW() - INTERVAL '1 hour'", s.ID, s.UserID)
 	if err != nil {
 		log.Printf("Score count error: %v", err)
@@ -189,7 +189,7 @@ func (s *Score) ResetLikes(amount int64) (int, error) {
 }
 
 //AddLikes func updates likes on db
-func (s *Score) AddLikes(amount int64) (int, error) {
+func (s *Score) AddLikes(amount int) (int, error) {
 	count, err := s.Count("WHERE id=$1 AND user_id=$2", s.ID, s.UserID)
 	if err != nil {
 		log.Printf("Score count error: %v", err)
@@ -229,8 +229,8 @@ func (s *Score) AddLikes(amount int64) (int, error) {
 }
 
 //DecreaseLikes func subtracts one like from likes_remaining in db
-func (s *Score) DecreaseLikes() (int, error) {
-	count, err := s.Count("WHERE id=$1 AND user_id=$2 AND likes_remaining > 0", s.ID, s.UserID)
+func (s *Score) DecreaseLikes(amount int) (int, error) {
+	count, err := s.Count("WHERE id=$1 AND user_id=$2 AND (likes_remaining - $3) >= 0", s.ID, s.UserID, amount)
 	if err != nil {
 		log.Printf("Score count error: %v", err)
 		return 500, errors.New("Server error")
@@ -245,14 +245,13 @@ func (s *Score) DecreaseLikes() (int, error) {
 	}
 
 	//update test set mynum = case when (0 < (mynum - 5)) then (mynum - 5) else (0) end;
-	stmt, err := db.Prepare("UPDATE scores SET likes_remaining = likes_remaining-1 AND likes_remaining=$1 WHERE id=$2 AND user_id=$3;")
+	stmt, err := db.Prepare("UPDATE scores SET likes_remaining = likes_remaining-$1 WHERE id=$2 AND user_id=$3;")
 	if err != nil {
 		log.Printf("create prepare statement error: %v", err)
 		return 500, err
 	}
 
-	now := time.Now()
-	res, err := stmt.Exec(&now, s.ID, s.UserID)
+	res, err := stmt.Exec(amount, s.ID, s.UserID)
 	if err != nil {
 		log.Printf("exec statement error: %v", err)
 		return 500, err
