@@ -4,9 +4,10 @@ import "github.com/challengr/lib"
 
 //LogIn is a struct used for logging
 type LogIn struct {
-	Email         string `json:"email"`
-	FacebookToken string `json:"facebook_token"`
-	Imei          string `json:"imei"`
+	Email          string `json:"email"`
+	FacebookUserID string `json:"facebook_user_id"`
+	FacebookToken  string `json:"facebook_token"`
+	Imei           string `json:"imei"`
 
 	Payload map[string]interface{} `json:"-"`
 }

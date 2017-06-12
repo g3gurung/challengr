@@ -62,22 +62,38 @@ func LogIn(c *gin.Context) {
 		return
 	}
 
-	if facebookResp.Email != logIn.Email {
+	if facebookResp.Email != logIn.Email || facebookResp.ID != logIn.FacebookUserID {
 		log.Printf("LogIn facebook email: %v != given login emai: %v", facebookResp.Email, logIn.Email)
 		c.JSON(http.StatusBadRequest, &model.ErrResp{Error: "Invalid fields detected", Fields: &[]string{"email"}})
 		return
 	}
 
-	user := model.User{Email: &facebookResp.Email, FacebookUserID: &facebookResp.ID}
+	//check via email or fb_user_id
+	user := model.User{Email: facebookResp.Email, FacebookUserID: facebookResp.ID, Name: facebookResp.Name}
 
-	count, err := user.Count("WHERE email=$1 AND facebook_user_id=$2", user.Email, facebookResp.ID)
+	userList, err := user.Get("WHERE facebook_user_id=$1", user.FacebookUserID)
 	if err != nil {
 		c.JSON(http.StatusBadRequest, &model.ErrResp{Error: "Server error"})
 		return
 	}
 
-	if count != 0 {
+	if len(userList) != 0 {
+
+		if userList[0].Email != user.Email && userList[0].Name != user.Name {
+			err = user.UpdateFBFields("UPDATE users SET email=$1, name=$2 WHERE id=$3", user.Email, user.Name, user.ID)
+		} else if userList[0].Email != user.Email {
+			err = user.UpdateFBFields("UPDATE users SET email=$1 WHERE id=$3", user.Email, user.ID)
+		} else if userList[0].Name != user.Name {
+			err = user.UpdateFBFields("UPDATE users SET name=$1 WHERE id=$3", user.Name, user.ID)
+		}
+
+		if err != nil {
+			c.JSON(http.StatusInternalServerError, &model.ErrResp{Error: "Server error"})
+			return
+		}
+
 		user.Token = user.CreateTokenString()
+
 		c.JSON(http.StatusOK, &user)
 		return
 	}
@@ -88,7 +104,15 @@ func LogIn(c *gin.Context) {
 	}
 
 	user.Token = user.CreateTokenString()
-	c.JSON(http.StatusOK, &user)
+	score := model.Score{UserID: user.ID, Exp: 0, Coins: 0, LikesRemaining: 20, LevelID: 0}
+
+	if status, err := score.Create(); err != nil {
+		c.JSON(status, &model.ErrResp{Error: err})
+		return
+	}
+
+	score.User = &user
+	c.JSON(http.StatusOK, &score)
 }
 
 //LogOut func handler logs out a user based on an user_id and imei

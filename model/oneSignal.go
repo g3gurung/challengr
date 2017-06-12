@@ -97,7 +97,7 @@ func (o *OneSignal) Upsert() error {
 
 	if count == 0 {
 		o.CreatedAt = &now
-		stmt, err := db.Prepare("INSERT INTO users(user_id, imei, player_id, created_at) VALUES($1,$2,$3,$4);")
+		stmt, err := db.Prepare("INSERT INTO onesignal(user_id, imei, player_id, created_at) VALUES($1,$2,$3,$4);")
 		if err != nil {
 			log.Printf("create prepare statement error: %v", err)
 			return err
@@ -127,7 +127,7 @@ func (o *OneSignal) Upsert() error {
 			return errors.New("Server error")
 		}
 	} else if count == 1 {
-		stmt, err := db.Prepare("INSERT INTO users(player_id, updated_at) VALUES($1,$2);")
+		stmt, err := db.Prepare("UPDATE onesignal SET player_id=$1, updated_at=$2 WHERE user_id=$3 AND imei=$4;")
 		if err != nil {
 			log.Printf("create prepare statement error: %v", err)
 			return err
@@ -135,7 +135,7 @@ func (o *OneSignal) Upsert() error {
 
 		o.UpdatedAt = &now
 
-		res, err := stmt.Exec(o.PlayerID, o.UpdatedAt)
+		res, err := stmt.Exec(o.PlayerID, o.UpdatedAt, o.UserID, o.Imei)
 		if err != nil {
 			log.Printf("exec statement error: %v", err)
 			return err

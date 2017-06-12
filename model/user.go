@@ -17,7 +17,7 @@ type User struct {
 	Name           string     `json:"name" sql:"name"`
 	Email          string     `json:"email" sql:"email"`
 	FacebookUserID string     `json:"facebook_user_id" sql:"facebook_user_id"`
-	Role           string     `json:"-" sql:"role"`
+	Role           string     `json:"role" sql:"role"`
 	Gender         string     `json:"gender" sql:"gender"`
 	DOB            string     `json:"date_of_birth" sql:"date_of_birth"`
 	Weight         *int       `json:"weight" sql:"weight"`
@@ -66,13 +66,13 @@ func (u *User) Create() error {
 	u.CreatedAt = &now
 	u.Role = roleUser
 
-	stmt, err := db.Prepare("INSERT INTO users(name, email, facebook_user_id, role, gender, date_of_birth, created_at, updated_at) VALUES($1,$2,$3,$4,$5,$6,$7,$8);")
+	stmt, err := db.Prepare("INSERT INTO users(name, email, facebook_user_id, role, gender, date_of_birth, created_at) VALUES($1,$2,$3,$4,$5,$6,$7);")
 	if err != nil {
-		log.Printf("Save ticket: create prepare statement error: %v", err)
+		log.Printf("create user prepare statement error: %v", err)
 		return err
 	}
 
-	res, err := stmt.Exec(u.Name, u.Email, u.FacebookUserID, u.Role, u.Gender, u.DOB, u.CreatedAt, u.UpdatedAt)
+	res, err := stmt.Exec(u.Name, u.Email, u.FacebookUserID, u.Role, u.Gender, u.DOB, u.CreatedAt)
 	if err != nil {
 		log.Printf("Create user: exec statement error: %v", err)
 		return err
@@ -131,6 +131,33 @@ func (u *User) Count(whereClause string, args ...interface{}) (int64, error) {
 	return count, nil
 }
 
+//UpdateFBFields func updates the name of the user
+func (u *User) UpdateFBFields(updateQuery string, args ...interface{}) error {
+	stmt, err := db.Prepare(updateQuery)
+	if err != nil {
+		log.Printf("UPDATE user prepare statement error: %v", err)
+		return err
+	}
+
+	res, err := stmt.Exec(args...)
+	if err != nil {
+		log.Printf("exec statement error: %v", err)
+		return err
+	}
+
+	affected, err := res.RowsAffected()
+	if err != nil {
+		log.Printf("rows effected error: %v", err)
+		return err
+	}
+	if affected == 0 {
+		log.Printf("rows effected -> %v", affected)
+		return errors.New("Server error")
+	}
+
+	return err
+}
+
 //Update func updates a user in db
 func (u *User) Update() error {
 	sets := []string{}
@@ -173,7 +200,7 @@ func (u *User) Update() error {
 		sets = append(sets, "updated_at=$"+strconv.Itoa(index))
 	}
 
-	stmt, err := db.Prepare("UPDATE hub SET " + strings.Join(sets, ", ") + " WHERE id=" + fmt.Sprintf("%v", u.ID) + ";")
+	stmt, err := db.Prepare("UPDATE users SET " + strings.Join(sets, ", ") + " WHERE id=" + fmt.Sprintf("%v", u.ID) + ";")
 	if err != nil {
 		log.Printf("UPDATE user prepare statement error: %v", err)
 		return err
