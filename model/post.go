@@ -13,6 +13,7 @@ type Post struct {
 	ID          int64      `json:"id" sql:"id"`
 	UserID      int64      `json:"user_id" sql:"user_id"`
 	ChallengeID int64      `json:"challenge_id" sql:"challenge_id"`
+	LikesNeeded int        `json:"likes_needed" sql:"likes_needed"`
 	FileURL     string     `json:"file_url" sql:"file_url"`
 	ContentType string     `json:"content_type" sql:"content_type"`
 	ContentSize int64      `json:"content_size" sql:"content_size"`
@@ -63,13 +64,13 @@ func (p *Post) Create() error {
 	now := time.Now()
 	p.CreatedAt = &now
 
-	stmt, err := db.Prepare("INSERT INTO posts(user_id, challenge_id, file_url, content_type, content_size, created_at) VALUES($1,$2,$3,$4,$5,$6);")
+	stmt, err := db.Prepare("INSERT INTO posts(user_id, likes_needed, challenge_id, file_url, content_type, content_size, created_at) VALUES($1,$2,$3,$4,$5,$6);")
 	if err != nil {
 		log.Printf("create prepare statement error: %v", err)
 		return err
 	}
 
-	res, err := stmt.Exec(p.UserID, p.ChallengeID, p.FileURL, p.ContentType, p.ContentSize, p.CreatedAt)
+	res, err := stmt.Exec(p.UserID, p.LikesNeeded, p.ChallengeID, p.FileURL, p.ContentType, p.ContentSize, p.CreatedAt)
 	if err != nil {
 		log.Printf("exec statement error: %v", err)
 		return err
@@ -111,7 +112,7 @@ func (p *Post) Count(whereClause string, args ...interface{}) (int64, error) {
 //Get func counts the total posts in db
 func (p *Post) Get(whereClause string, args ...interface{}) ([]*Post, error) {
 	postList := []*Post{}
-	rows, err := db.Query("SELECT id, file_url, content_type, content_size, created_at, updated_at, (SELECT array_to_json(array_agg(likes)) FROM likes WHERE post_id=posts.id) as likes, (SELECT array_to_json(array_agg(flags)) FROM flags WHERE post_id=posts.id) as flags FROM posts "+whereClause+" ORDER BY created_at DESC;", args...)
+	rows, err := db.Query("SELECT id, likes_needed, file_url, content_type, content_size, created_at, updated_at, (SELECT array_to_json(array_agg(likes)) FROM likes WHERE post_id=posts.id) as likes, (SELECT array_to_json(array_agg(flags)) FROM flags WHERE post_id=posts.id) as flags FROM posts "+whereClause+" ORDER BY created_at DESC;", args...)
 	if err != nil {
 		log.Printf("Get users: sql error %v", err)
 		return nil, err
@@ -120,7 +121,7 @@ func (p *Post) Get(whereClause string, args ...interface{}) ([]*Post, error) {
 		post := Post{}
 		likesStr := ""
 		flagsStr := ""
-		if err = rows.Scan(&p.ID, &p.FileURL, &p.ContentType, &p.ContentSize, &p.CreatedAt, &p.UpdatedAt, &likesStr, &flagsStr); err != nil {
+		if err = rows.Scan(&p.ID, &p.LikesNeeded, &p.FileURL, &p.ContentType, &p.ContentSize, &p.CreatedAt, &p.UpdatedAt, &likesStr, &flagsStr); err != nil {
 			log.Printf("scanning row to struct error: %v", err)
 			return nil, err
 		}

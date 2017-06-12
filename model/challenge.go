@@ -12,14 +12,15 @@ import (
 
 //Challenge struct is a model/schema for a challenge table
 type Challenge struct {
-	ID          int64      `json:"id" sql:"id"`
-	UserID      int64      `json:"user_id" sql:"user_id"`
-	Name        string     `json:"name" sql:"name"`
-	Description *string    `json:"description" sql:"description"`
-	Status      string     `json:"status" sql:"status"`
-	Weight      *int       `json:"weight" sql:"weight"`
-	CreatedAt   *time.Time `json:"created_at" sql:"created_at"`
-	UpdatedAt   *time.Time `json:"updated_at" sql:"updated_at"`
+	ID                 int64      `json:"id" sql:"id"`
+	UserID             int64      `json:"user_id" sql:"user_id"`
+	Name               string     `json:"name" sql:"name"`
+	LikesNeededPerPost int        `json:"likes_needed_per_post" sql:"likes_needed_per_post"`
+	Description        *string    `json:"description" sql:"description"`
+	Status             string     `json:"status" sql:"status"`
+	Weight             *int       `json:"weight" sql:"weight"`
+	CreatedAt          *time.Time `json:"created_at" sql:"created_at"`
+	UpdatedAt          *time.Time `json:"updated_at" sql:"updated_at"`
 
 	TotalPost int64     `json:"total_post" sql:"-"`
 	Location  *geometry `json:"geo_coords" sql:"-"`
@@ -34,6 +35,7 @@ func (c *Challenge) ParseNotAllowedJSON() []string {
 	delete(c.Payload, "name")
 	delete(c.Payload, "description")
 	delete(c.Payload, "geo_coords")
+	delete(c.Payload, "likes_needed_per_post")
 
 	for key := range c.Payload {
 		errSlice = append(errSlice, key)
@@ -66,13 +68,13 @@ func (c *Challenge) Create() error {
 
 	geometryValue := "ST_GeomFromGeoJSON('" + string(geomStr) + "')"
 
-	stmt, err := db.Prepare("INSERT INTO cahllenge(user_id, name, description, status, weight, geometry, created_at) VALUES($1,$2,$3,$4,$5" + geometryValue + ",$6);")
+	stmt, err := db.Prepare("INSERT INTO cahllenge(user_id, name, description, likes_needed_per_post, status, weight, geometry, created_at) VALUES($1,$2,$3,$4,$5" + geometryValue + ",$6);")
 	if err != nil {
 		log.Printf("create prepare statement error: %v", err)
 		return err
 	}
 
-	res, err := stmt.Exec(c.UserID, c.Name, c.Description, c.Status, c.Weight, c.CreatedAt)
+	res, err := stmt.Exec(c.UserID, c.Name, c.Description, c.LikesNeededPerPost, c.Status, c.Weight, c.CreatedAt)
 	if err != nil {
 		log.Printf("exec statement error: %v", err)
 		return err
@@ -163,7 +165,7 @@ func (c *Challenge) Update() error {
 func (c *Challenge) Get(whereClause string, args ...interface{}) ([]*Challenge, error) {
 	challengeList := []*Challenge{}
 
-	rows, err := db.Query("SELECT id, name, description, ST_AsGeoJSON(geometry) AS location, (SELECT COUNT(id) FROM posts WHERE posts.challenge_id=challenges.id) AS total_post, created_at, updated_at FROM flags WHERE post_id=posts.id) as flags FROM posts "+whereClause+" ORDER BY created_at DESC;", args...)
+	rows, err := db.Query("SELECT id, name, description, likes_needed_per_post, ST_AsGeoJSON(geometry) AS location, (SELECT COUNT(id) FROM posts WHERE posts.challenge_id=challenges.id) AS total_post, created_at, updated_at FROM flags WHERE post_id=posts.id) as flags FROM posts "+whereClause+" ORDER BY created_at DESC;", args...)
 	if err != nil {
 		log.Printf("Get users: sql error %v", err)
 		return nil, err
@@ -171,7 +173,7 @@ func (c *Challenge) Get(whereClause string, args ...interface{}) ([]*Challenge, 
 	for rows.Next() {
 		challenge := Challenge{}
 		geomStr := ""
-		if err = rows.Scan(&c.ID, &c.Name, &c.Description, &geomStr, &c.TotalPost, &c.CreatedAt, &c.UpdatedAt); err != nil {
+		if err = rows.Scan(&c.ID, &c.Name, &c.Description, &c.LikesNeededPerPost, &geomStr, &c.TotalPost, &c.CreatedAt, &c.UpdatedAt); err != nil {
 			log.Printf("scanning row to struct error: %v", err)
 			return nil, err
 		}

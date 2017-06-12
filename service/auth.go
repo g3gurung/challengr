@@ -18,13 +18,13 @@ func LogIn(c *gin.Context) {
 	var logIn model.LogIn
 	if err := c.BindJSON(&logIn); err != nil {
 		log.Printf("LogIn struct JSON bind error: %v", err)
-		c.JSON(http.StatusBadRequest, &model.ErrResp{Error: "Invalid login payload"})
+		c.JSON(http.StatusBadRequest, &model.ErrResp{Error: err.Error()})
 		return
 	}
 
 	if err := c.BindJSON(&logIn.Payload); err != nil {
 		log.Printf("LogIn Payload JSON bind error: %v", err)
-		c.JSON(http.StatusBadRequest, &model.ErrResp{Error: "Invalid login payload"})
+		c.JSON(http.StatusBadRequest, &model.ErrResp{Error: err.Error()})
 		return
 	}
 

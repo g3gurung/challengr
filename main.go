@@ -22,5 +22,14 @@ func main() {
 
 	router.GET("/s3Sign", service.PreSignS3)
 
+	router.PUT("/onesignal", service.UpdateOneSignal)
+
+	router.POST("/login", service.LogIn)
+	router.POST("/logout", service.LogOut)
+
+	router.GET("/user", service.GetUser)
+
+	router.GET("/challenge", service.GetChellenge)
+
 	router.Run(":" + port)
 }

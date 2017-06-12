@@ -150,7 +150,7 @@ func (s *Score) UpdateCoins(amount int64) (int, error) {
 
 //ResetLikes func updates likes on db
 func (s *Score) ResetLikes(amount int64) (int, error) {
-	count, err := s.Count("WHERE id=$1 AND user_id=$2 AND likes_remaining=0", s.ID, s.UserID)
+	count, err := s.Count("WHERE id=$1 AND user_id=$2 AND likes_remaining=0 AND likes_updated_at < NOW() - INTERVAL '1 hour'", s.ID, s.UserID)
 	if err != nil {
 		log.Printf("Score count error: %v", err)
 		return 500, errors.New("Server error")
