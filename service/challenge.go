@@ -49,10 +49,10 @@ func GetChellenge(c *gin.Context) {
 	case "hot":
 		orderByStr := "(((SELECT COUNT(posts.id) FROM posts WHERE posts.challenge_id=challenges.id AND (SELECT COUNT(likes.id) FROM likes WHERE likes.post_id=posts.id)) / (SELECT COUNT(posts.id) FROM posts WHERE posts.challenge_id=id)) * (SELECT COUNT(posts.id) FROM posts WHERE posts.challenge_id=id) / 100)"
 		orderByStr = "(" + orderByStr + " + " + orderByStr + " * challenges.weight) DESC"
-		whereQueryStr = "WHERE " + strings.Join(whereClause, " AND ") + " AND status='" + status + "' ORDER BY " + orderByStr
+		whereQueryStr = "WHERE " + strings.Join(whereClause, " AND ") + " AND status='" + status + "' AND deleted_at IS NULL ORDER BY " + orderByStr + " LIMIT 20"
 	case "fresh":
 		orderByStr := "challenges.created_at DESC, (SELECT COUNT(posts.id) FROM posts WHERE posts.challenge_id=challenges.id) DESC"
-		whereQueryStr = "WHERE " + strings.Join(whereClause, " AND ") + " AND status='" + status + "' ORDER BY " + orderByStr
+		whereQueryStr = "WHERE " + strings.Join(whereClause, " AND ") + " AND status='" + status + "' AND deleted_at IS NULL ORDER BY " + orderByStr + " LIMIT 20"
 
 	default:
 		c.JSON(http.StatusBadRequest, &model.ErrResp{Error: "Invalid query strings", Fields: &[]string{"type"}})
@@ -76,25 +76,179 @@ func GetChellenge(c *gin.Context) {
 
 //PostChallenge func handler creates a new challenge
 func PostChallenge(c *gin.Context) {
+	userID := c.MustGet("user_id").(int64)
+	//facebookUserID := c.MustGet("facebook_user_id").(string)
+	weight := c.MustGet("weight").(float32)
 
+	var challenge model.Challenge
+	if err := c.BindJSON(&challenge); err != nil {
+		log.Printf("challenge struct JSON bind error: %v", err)
+		c.JSON(http.StatusBadRequest, &model.ErrResp{Error: err.Error()})
+		return
+	}
+
+	if err := c.BindJSON(&challenge.Payload); err != nil {
+		log.Printf("challenge Payload JSON bind error: %v", err)
+		c.JSON(http.StatusBadRequest, &model.ErrResp{Error: err.Error()})
+		return
+	}
+
+	if errSlice := challenge.ParseNotAllowedJSON(); len(errSlice) > 0 {
+		log.Printf("challenge not allowed fields detected: %v", errSlice)
+		c.JSON(http.StatusBadRequest, &model.ErrResp{Error: "Some fields are not allowed", Fields: &errSlice})
+		return
+	}
+
+	if errSlice := challenge.PostValidate(); len(errSlice) > 0 {
+		log.Printf("challenge post validate err: %v", errSlice)
+		c.JSON(http.StatusBadRequest, &model.ErrResp{Error: "Invalid fields detected", Fields: &errSlice})
+		return
+	}
+
+	challenge.UserID = userID
+	challenge.Weight = &weight
+
+	if err := challenge.Create(); err != nil {
+		log.Printf("challenge create err: %v", err)
+		c.JSON(http.StatusInternalServerError, &model.ErrResp{Error: "Server error"})
+		return
+	}
+
+	c.JSON(http.StatusOK, &challenge)
 }
 
 //PutChallenge func handler updates a challenge. PS: It cant update 'name'.
 func PutChallenge(c *gin.Context) {
+	userID := c.MustGet("user_id").(int64)
+	paramChallengeID := c.Param("challenge_id")
+	challengeID, err := strconv.ParseInt(paramChallengeID, 10, 64)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, &model.ErrResp{Error: "Invalid path params", Fields: &[]string{"challenge_id"}})
+		return
+	}
 
+	challenge := model.Challenge{ID: challengeID}
+	if err := c.BindJSON(&challenge); err != nil {
+		log.Printf("challenge struct JSON bind error: %v", err)
+		c.JSON(http.StatusBadRequest, &model.ErrResp{Error: err.Error()})
+		return
+	}
+
+	if err := c.BindJSON(&challenge.Payload); err != nil {
+		log.Printf("challenge Payload JSON bind error: %v", err)
+		c.JSON(http.StatusBadRequest, &model.ErrResp{Error: err.Error()})
+		return
+	}
+
+	if errSlice := challenge.ParseNotAllowedJSON(); len(errSlice) > 0 {
+		log.Printf("challenge not allowed fields detected: %v", errSlice)
+		c.JSON(http.StatusBadRequest, &model.ErrResp{Error: "Some fields are not allowed", Fields: &errSlice})
+		return
+	}
+
+	notAllowedFields := []string{}
+	if challenge.Status != "" {
+		notAllowedFields = append(notAllowedFields, "status")
+	}
+	if challenge.Name != "" {
+		notAllowedFields = append(notAllowedFields, "name")
+	}
+	if challenge.LikesNeededPerPost != 0 {
+		notAllowedFields = append(notAllowedFields, "likes_needed_per_post")
+	}
+	if challenge.Weight != nil {
+		notAllowedFields = append(notAllowedFields, "weight")
+	}
+
+	if len(notAllowedFields) > 0 {
+		c.JSON(http.StatusBadRequest, &model.ErrResp{Error: "Some fields are not allowed", Fields: &notAllowedFields})
+		return
+	}
+
+	if challenge.Description == nil && challenge.Location == nil {
+		log.Printf("challenge Payload invalid json: %v", challenge.Payload)
+		c.JSON(http.StatusBadRequest, &model.ErrResp{Error: "No valid payload detected"})
+		return
+	}
+
+	challenge.UserID = userID
+
+	if errStatus, err := challenge.Update(); err != nil {
+		log.Printf("challenge update error: %v", err)
+		c.JSON(errStatus, &model.ErrResp{Error: err.Error()})
+		return
+	}
+
+	c.JSON(http.StatusOK, &model.SuccessResp{Message: "Challenge successfuly updated", Status: http.StatusOK})
 }
 
 //DeleteChallenge func handler deletes a challenge, if there is no post made.
 func DeleteChallenge(c *gin.Context) {
+	userID := c.MustGet("user_id").(int64)
+	role := c.MustGet("role").(string)
 
+	paramChallengeID := c.Param("challenge_id")
+	challengeID, err := strconv.ParseInt(paramChallengeID, 10, 64)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, &model.ErrResp{Error: "Invalid path params", Fields: &[]string{"challenge_id"}})
+		return
+	}
+
+	errStatus := 0
+	switch role {
+	case adminRole:
+		errStatus, err = (&model.Challenge{ID: challengeID}).Delete()
+	case userRole:
+		errStatus, err = (&model.Challenge{ID: challengeID, UserID: userID}).AdminDelete()
+	default:
+		c.JSON(http.StatusForbidden, &model.ErrResp{Error: "Check token"})
+		return
+	}
+
+	if err != nil {
+		c.JSON(errStatus, err.Error())
+		return
+	}
+
+	c.JSON(http.StatusOK, &model.SuccessResp{Message: "Challenge successfuly deleted", Status: http.StatusOK})
+}
+
+func activeDeactiveChallenge(val string, c *gin.Context) {
+	userID := c.MustGet("user_id").(int64)
+	role := c.MustGet("role").(string)
+
+	paramChallengeID := c.Param("challenge_id")
+	challengeID, err := strconv.ParseInt(paramChallengeID, 10, 64)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, &model.ErrResp{Error: "Invalid path params", Fields: &[]string{"challenge_id"}})
+		return
+	}
+
+	errStatus := 0
+	switch role {
+	case adminRole:
+		errStatus, err = (&model.Challenge{ID: challengeID, Status: val}).AdminUpdate()
+	case userRole:
+		errStatus, err = (&model.Challenge{ID: challengeID, UserID: userID, Status: val}).Update()
+	default:
+		c.JSON(http.StatusForbidden, &model.ErrResp{Error: "Check token"})
+		return
+	}
+
+	if err != nil {
+		c.JSON(errStatus, err.Error())
+		return
+	}
+
+	c.JSON(http.StatusOK, &model.SuccessResp{Message: "Challenge successfuly updated", Status: http.StatusOK})
 }
 
 //DeActivateChallenge func handler de-activates challenges which are not being used for a while.
 func DeActivateChallenge(c *gin.Context) {
-
+	activeDeactiveChallenge("inactive", c)
 }
 
 //ActivateChallenge func handler de-activates challenges which are not being used for a while.
 func ActivateChallenge(c *gin.Context) {
-
+	activeDeactiveChallenge("active", c)
 }
