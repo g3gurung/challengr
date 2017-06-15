@@ -30,6 +30,11 @@ func main() {
 	router.GET("/user", service.GetUser)
 
 	router.GET("/challenge", service.GetChellenge)
+	router.POST("/challenge", service.PostChallenge)
+	router.PUT("/challenge/:challenge_id", service.PutChallenge)
+	router.DELETE("/challenge/:challenge_id", service.DeleteChallenge)
+
+	router.GET("/challenge/:challenge_id/post/:post", service.GetPost)
 
 	router.Run(":" + port)
 }
