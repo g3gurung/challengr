@@ -1,11 +1,15 @@
 package model
 
+import "time"
+
 //Flag struct is a model/schema for a flags table
 type Flag struct {
 	ID     string `json:"id" sql:"id"`
-	UserID string `json:"-" sql:"user_id"`
+	UserID int64  `json:"-" sql:"user_id"`
+	PostID int64  `json:"post_id" sql:"post_id"`
 
-	User *User `json:"user" sql:"-"`
+	User      *User     `json:"user" sql:"-"`
+	CreatedAt time.Time `json:"created_at" sql:"created_at"`
 }
 
 //Delete func deletes a flag

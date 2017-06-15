@@ -18,7 +18,7 @@ type Post struct {
 	ContentType string     `json:"content_type" sql:"content_type"`
 	ContentSize int64      `json:"content_size" sql:"content_size"`
 	CreatedAt   *time.Time `json:"created_at" sql:"created_at"`
-	UpdatedAt   *time.Time `json:"updated_at" sql:"updated_at"`
+	UpdatedAt   *time.Time `json:"updated_at,omitempty" sql:"updated_at"`
 
 	Flags []*Flag `json:"flags" sql:"-"`
 	Likes []*Like `json:"likes" sql:"-"`
@@ -33,6 +33,7 @@ func (p *Post) ParseNotAllowedJSON() []string {
 	delete(p.Payload, "file_url")
 	delete(p.Payload, "content_type")
 	delete(p.Payload, "content_size")
+	delete(p.Payload, "likes_needed")
 
 	for key := range p.Payload {
 		errSlice = append(errSlice, key)
@@ -56,6 +57,11 @@ func (p *Post) PostValidate() []string {
 	if p.ContentType == "" {
 		errSlice = append(errSlice, "content_type")
 	}
+
+	if p.LikesNeeded == 0 {
+		errSlice = append(errSlice, "likes_needed")
+	}
+
 	return errSlice
 }
 
@@ -141,45 +147,205 @@ func (p *Post) Get(whereClause string, args ...interface{}) ([]*Post, error) {
 	return postList, nil
 }
 
-//Delete func deletes the post record of the user. Delete meaning it doesnt purge it. Just hides it.
-func (p *Post) Delete() error {
-	count, err := p.Count("WHERE id=$1", p.ID)
+//Flag func flags the post
+func (p *Post) Flag(userID int64) (int, error) {
+	count, err := p.Count("WHERE id=$1 AND challenge_id=$2", p.ID, p.ChallengeID)
 	if err != nil {
-		log.Printf("Post delete: error on fetching Post record count: %v", err)
-		return err
+		log.Printf("Post flag: error on fetching Post record count: %v", err)
+		return 500, err
 	}
 
 	if count == 0 {
-		err = fmt.Errorf("Post account not found-> id %v, total found %v", p.ID, count)
+		err = fmt.Errorf("Post not found-> id %v, total found %v", p.ID, count)
 		log.Printf("%v", err)
-		return err
+		return 404, err
+	} else if count != 1 {
+		err = fmt.Errorf("Post multiple found-> id %v, total found %v", p.ID, count)
+		log.Printf("%v", err)
+		return 409, err
+	}
+
+	stmt, err := db.Prepare("INSERT INTO flags (user_id, post_id, created_at) SELECT $1, $2, $3 WHERE NOT EXISTS (SELECT id FROM flags WHERE user_id=$4 AND post_id=$5)")
+	if err != nil {
+		log.Printf("create prepare statement error: %v", err)
+		return 500, err
+	}
+
+	res, err := stmt.Exec(userID, p.ID, time.Now(), userID, p.ID)
+	if err != nil {
+		log.Printf("exec statement error: %v", err)
+		return 500, err
+	}
+
+	_, err = res.RowsAffected()
+	if err != nil {
+		log.Printf("rows effected error: %v", err)
+		return 500, err
+	}
+
+	return 0, nil
+}
+
+//UnFlag func unflaggs the post
+func (p *Post) UnFlag(userID int64) (int, error) {
+	count, err := p.Count("WHERE id=$1 AND challenge_id=$2", p.ID, p.ChallengeID)
+	if err != nil {
+		log.Printf("Post unflag: error on fetching Post record count: %v", err)
+		return 0, err
+	}
+
+	if count == 0 {
+		err = fmt.Errorf("Post not found-> id %v, total found %v", p.ID, count)
+		log.Printf("%v", err)
+		return 404, err
+	} else if count != 1 {
+		err = fmt.Errorf("Post multiple found-> id %v, total found %v", p.ID, count)
+		log.Printf("%v", err)
+		return 409, err
+	}
+
+	stmt, err := db.Prepare("DELETE FROM flags WHERE user_id=$1 AND post_id=$2;")
+	if err != nil {
+		log.Printf("create prepare statement error: %v", err)
+		return 500, err
+	}
+
+	res, err := stmt.Exec(userID, p.ID)
+	if err != nil {
+		log.Printf("exec statement error: %v", err)
+		return 500, err
+	}
+
+	_, err = res.RowsAffected()
+	if err != nil {
+		log.Printf("rows effected error: %v", err)
+		return 500, err
+	}
+
+	return 0, nil
+}
+
+//Like func likes a post
+func (p *Post) Like(userID int64) (int, error) {
+	count, err := p.Count("WHERE id=$1 AND challenge_id=$2", p.ID, p.ChallengeID)
+	if err != nil {
+		log.Printf("Post flag: error on fetching Post record count: %v", err)
+		return 500, err
+	}
+
+	if count == 0 {
+		err = fmt.Errorf("Post not found-> id %v, total found %v", p.ID, count)
+		log.Printf("%v", err)
+		return 404, err
+	} else if count != 1 {
+		err = fmt.Errorf("Post multiple found-> id %v, total found %v", p.ID, count)
+		log.Printf("%v", err)
+		return 409, err
+	}
+
+	stmt, err := db.Prepare("INSERT INTO likes (user_id, post_id, created_at) SELECT $1, $2, $3 WHERE NOT EXISTS (SELECT id FROM likes WHERE user_id=$4 AND post_id=$5)")
+	if err != nil {
+		log.Printf("create prepare statement error: %v", err)
+		return 500, err
+	}
+
+	res, err := stmt.Exec(userID, p.ID, time.Now(), userID, p.ID)
+	if err != nil {
+		log.Printf("exec statement error: %v", err)
+		return 500, err
+	}
+
+	_, err = res.RowsAffected()
+	if err != nil {
+		log.Printf("rows effected error: %v", err)
+		return 500, err
+	}
+
+	return 0, nil
+}
+
+//Delete func deletes the post record of the user. Delete meaning it doesnt purge it. Just hides it.
+func (p *Post) Delete() (int, error) {
+	count, err := p.Count("WHERE id=$1 AND challenge_id=$2 AND user_id=$3", p.ID, p.ChallengeID, p.UserID)
+	if err != nil {
+		log.Printf("Post delete: error on fetching Post record count: %v", err)
+		return 500, err
+	}
+
+	if count == 0 {
+		err = fmt.Errorf("Post not found-> id %v, challenge_id %v, user_id %v total found %v", p.ID, p.ChallengeID, p.UserID, count)
+		log.Printf("%v", err)
+		return 404, err
 	} else if count == 1 {
-		stmt, err := db.Prepare("UPDATE posts SET deleted_at=$1 WHERE id=$2;")
+		stmt, err := db.Prepare("UPDATE posts SET deleted_at=$1 WHERE id=$2 AND user_id=$3;")
 		if err != nil {
 			log.Printf("create prepare statement error: %v", err)
-			return err
+			return 500, err
 		}
 
-		res, err := stmt.Exec(time.Now(), p.ID)
+		res, err := stmt.Exec(time.Now(), p.ID, p.UserID)
 		if err != nil {
 			log.Printf("exec statement error: %v", err)
-			return err
+			return 500, err
 		}
 
 		affected, err := res.RowsAffected()
 		if err != nil {
 			log.Printf("rows effected error: %v", err)
-			return err
+			return 500, err
 		}
 		if affected == 0 {
 			log.Printf("rows effected -> %v", affected)
-			return errors.New("Server error")
+			return 404, errors.New("Post not found")
 		}
 	} else {
 		err = fmt.Errorf("multiple posts found-> id %v, total found %v", p.ID, count)
 		log.Printf("%v", err)
-		return err
+		return 409, err
 	}
 
-	return nil
+	return 0, nil
+}
+
+//AdminDelete func deletes the post record of the user. Delete meaning it doesnt purge it. Just hides it.
+func (p *Post) AdminDelete() (int, error) {
+	count, err := p.Count("WHERE id=$1 AND challenge_id=$2", p.ID, p.ChallengeID)
+	if err != nil {
+		log.Printf("Post delete: error on fetching Post record count: %v", err)
+		return 500, err
+	}
+
+	if count == 0 {
+		err = fmt.Errorf("Post not found-> id %v, challenge_id %v total found %v", p.ID, p.ChallengeID, count)
+		log.Printf("%v", err)
+		return 404, err
+	} else if count == 1 {
+		stmt, err := db.Prepare("UPDATE posts SET deleted_at=$1 WHERE id=$2;")
+		if err != nil {
+			log.Printf("create prepare statement error: %v", err)
+			return 500, err
+		}
+
+		res, err := stmt.Exec(time.Now(), p.ID)
+		if err != nil {
+			log.Printf("exec statement error: %v", err)
+			return 500, err
+		}
+
+		affected, err := res.RowsAffected()
+		if err != nil {
+			log.Printf("rows effected error: %v", err)
+			return 500, err
+		}
+		if affected == 0 {
+			log.Printf("rows effected -> %v", affected)
+			return 404, errors.New("Post not found")
+		}
+	} else {
+		err = fmt.Errorf("multiple posts found-> id %v, total found %v", p.ID, count)
+		log.Printf("%v", err)
+		return 409, err
+	}
+
+	return 0, nil
 }
