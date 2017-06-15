@@ -21,6 +21,12 @@ var svc *s3.S3
 //bucketName const is used as a bucket name for s3
 const bucketName = "challengrPost"
 
+//adminRole const is used as a role string for admin
+const adminRole = "admin"
+
+//userRole const is used as a role string for admin
+const userRole = "user"
+
 func init() {
 	config := aws.NewConfig().WithRegion(os.Getenv("PORT"))
 	config.WithCredentials(credentials.NewStaticCredentials(os.Getenv("AWS-ID"), os.Getenv("AWS-KEY"), ""))

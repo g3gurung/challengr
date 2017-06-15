@@ -18,7 +18,7 @@ type Challenge struct {
 	LikesNeededPerPost int        `json:"likes_needed_per_post" sql:"likes_needed_per_post"`
 	Description        *string    `json:"description" sql:"description"`
 	Status             string     `json:"status" sql:"status"`
-	Weight             *int       `json:"weight" sql:"weight"`
+	Weight             *float32   `json:"weight" sql:"weight"`
 	CreatedAt          *time.Time `json:"created_at" sql:"created_at"`
 	UpdatedAt          *time.Time `json:"updated_at" sql:"updated_at"`
 
@@ -50,6 +50,10 @@ func (c *Challenge) PostValidate() []string {
 
 	if c.Name == "" {
 		errSlice = append(errSlice, "name")
+	}
+
+	if c.Location == nil {
+		errSlice = append(errSlice, "geo_coords")
 	}
 
 	return errSlice
@@ -102,7 +106,78 @@ func (c *Challenge) Create() error {
 }
 
 //Update func updates a challenge in the db
-func (c *Challenge) Update() error {
+func (c *Challenge) Update() (int, error) {
+	sets := []string{}
+	values := make(map[int]interface{})
+	index := 0
+
+	if c.Description != nil {
+		values[index] = *c.Description
+		index = index + 1
+		sets = append(sets, "description=$"+strconv.Itoa(index))
+	}
+
+	if c.Status != "" {
+		values[index] = c.Status
+		index = index + 1
+		sets = append(sets, "status=$"+strconv.Itoa(index))
+	}
+
+	if c.Weight != nil {
+		values[index] = *c.Weight
+		index = index + 1
+		sets = append(sets, "weight=$"+strconv.Itoa(index))
+	}
+
+	if c.UpdatedAt != nil {
+		values[index] = c.UpdatedAt
+		index = index + 1
+		sets = append(sets, "updated_at=$"+strconv.Itoa(index))
+	}
+
+	if c.Location != nil {
+		geomStr, err := json.Marshal(c.Location)
+		if err != nil {
+			log.Printf("Bad location value err: %v\n", err)
+			return 0, err
+		}
+
+		geometryValue := "ST_GeomFromGeoJSON('" + string(geomStr) + "')"
+		sets = append(sets, "updated_at="+geometryValue)
+	}
+
+	stmt, err := db.Prepare("UPDATE challenges SET " + strings.Join(sets, ", ") + " WHERE id=" + fmt.Sprintf("%v", c.ID) + " AND user_id=" + fmt.Sprintf("%v", c.UserID) + ";")
+	if err != nil {
+		log.Printf("UPDATE challegne prepare statement error: %v", err)
+		return 500, errors.New("Server error")
+	}
+
+	argsValues := make([]interface{}, len(values))
+	for k, v := range values {
+		argsValues[k] = v
+	}
+
+	res, err := stmt.Exec(argsValues...)
+	if err != nil {
+		log.Printf("exec statement error: %v", err)
+		return 500, errors.New("Server error")
+	}
+
+	affected, err := res.RowsAffected()
+	if err != nil {
+		log.Printf("rows effected error: %v", err)
+		return 500, errors.New("Server error")
+	}
+	if affected == 0 {
+		log.Printf("rows effected -> %v", affected)
+		return 404, errors.New("Challenge not found")
+	}
+
+	return 0, nil
+}
+
+//AdminUpdate func updates a challenge in the db
+func (c *Challenge) AdminUpdate() (int, error) {
 	sets := []string{}
 	values := make(map[int]interface{})
 	index := 0
@@ -134,7 +209,7 @@ func (c *Challenge) Update() error {
 	stmt, err := db.Prepare("UPDATE challenges SET " + strings.Join(sets, ", ") + " WHERE id=" + fmt.Sprintf("%v", c.ID) + ";")
 	if err != nil {
 		log.Printf("UPDATE challegne prepare statement error: %v", err)
-		return err
+		return 500, errors.New("Server error")
 	}
 
 	argsValues := make([]interface{}, len(values))
@@ -145,20 +220,20 @@ func (c *Challenge) Update() error {
 	res, err := stmt.Exec(argsValues...)
 	if err != nil {
 		log.Printf("exec statement error: %v", err)
-		return err
+		return 500, errors.New("Server error")
 	}
 
 	affected, err := res.RowsAffected()
 	if err != nil {
 		log.Printf("rows effected error: %v", err)
-		return err
+		return 500, errors.New("Server error")
 	}
 	if affected == 0 {
 		log.Printf("rows effected -> %v", affected)
-		return errors.New("Server error")
+		return 404, errors.New("Challenge not found")
 	}
 
-	return nil
+	return 0, nil
 }
 
 //Get func fetches the challenges from the db based on the query
@@ -202,44 +277,87 @@ func (c *Challenge) Count(whereClause string, args ...interface{}) (int64, error
 }
 
 //Delete func deletes the post record of the user. Delete meaning it doesnt purge it. Just hides it.
-func (c *Challenge) Delete() error {
-	count, err := c.Count("WHERE id=$1", c.ID)
+func (c *Challenge) Delete() (int, error) {
+	count, err := c.Count("WHERE id=$1 AND user_id=$2", c.ID, c.UserID)
 	if err != nil {
-		log.Printf("Post delete: error on fetching Post record count: %v", err)
-		return err
+		log.Printf("challenge delete: error on fetching Post record count: %v", err)
+		return 500, errors.New("Server error")
 	}
 
 	if count == 0 {
-		err = fmt.Errorf("Post account not found-> id %v, total found %v", c.ID, count)
+		err = fmt.Errorf("challenge not found-> id %v, user_id %v, total found %v", c.ID, c.UserID, count)
 		log.Printf("%v", err)
-		return err
+		return 405, errors.New("Not allowed")
 	} else if count == 1 {
-		stmt, err := db.Prepare("UPDATE challenges SET deleted_at=$1 WHERE id=$2;")
+		stmt, err := db.Prepare("UPDATE challenges SET deleted_at=$1 WHERE id=$2 AND user_id=$3;")
 		if err != nil {
 			log.Printf("create prepare statement error: %v", err)
-			return err
+			return 500, errors.New("Server error")
 		}
 
-		res, err := stmt.Exec(time.Now(), c.ID)
+		res, err := stmt.Exec(time.Now(), c.ID, c.UserID)
 		if err != nil {
 			log.Printf("exec statement error: %v", err)
-			return err
+			return 500, errors.New("Server error")
 		}
 
 		affected, err := res.RowsAffected()
 		if err != nil {
 			log.Printf("rows effected error: %v", err)
-			return err
+			return 500, errors.New("Server error")
 		}
 		if affected == 0 {
 			log.Printf("rows effected -> %v", affected)
-			return errors.New("Server error")
+			return 500, errors.New("Server error")
 		}
 	} else {
-		err = fmt.Errorf("multiple posts found-> id %v, total found %v", c.ID, count)
+		err = fmt.Errorf("multiple challenges found-> id %v, total found %v", c.ID, count)
 		log.Printf("%v", err)
-		return err
+		return 409, errors.New("Multiple challenges detected")
 	}
 
-	return nil
+	return 0, nil
+}
+
+//AdminDelete func deletes the post record of the user. Delete meaning it doesnt purge it. Just hides it.
+func (c *Challenge) AdminDelete() (int, error) {
+	count, err := c.Count("WHERE id=$1", c.ID)
+	if err != nil {
+		log.Printf("challenge delete: error on fetching Post record count: %v", err)
+		return 500, errors.New("Server error")
+	}
+
+	if count == 0 {
+		err = fmt.Errorf("challenge not found-> id %v, total found %v", c.ID, count)
+		log.Printf("%v", err)
+		return 404, errors.New("challenge not found")
+	} else if count == 1 {
+		stmt, err := db.Prepare("UPDATE challenges SET deleted_at=$1 WHERE id=$2;")
+		if err != nil {
+			log.Printf("create prepare statement error: %v", err)
+			return 500, errors.New("Server error")
+		}
+
+		res, err := stmt.Exec(time.Now(), c.ID)
+		if err != nil {
+			log.Printf("exec statement error: %v", err)
+			return 500, errors.New("Server error")
+		}
+
+		affected, err := res.RowsAffected()
+		if err != nil {
+			log.Printf("rows effected error: %v", err)
+			return 500, errors.New("Server error")
+		}
+		if affected == 0 {
+			log.Printf("rows effected -> %v", affected)
+			return 404, errors.New("challenge not found")
+		}
+	} else {
+		err = fmt.Errorf("multiple challenges found-> id %v, total found %v", c.ID, count)
+		log.Printf("%v", err)
+		return 409, errors.New("Multiple challenges detected")
+	}
+
+	return 0, nil
 }

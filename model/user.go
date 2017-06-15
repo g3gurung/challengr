@@ -8,6 +8,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/challengr/middleware"
 	jwt "github.com/dgrijalva/jwt-go"
 )
 
@@ -20,7 +21,7 @@ type User struct {
 	Role           string     `json:"role" sql:"role"`
 	Gender         string     `json:"gender" sql:"gender"`
 	DOB            string     `json:"date_of_birth" sql:"date_of_birth"`
-	Weight         *int       `json:"weight" sql:"weight"`
+	Weight         *float32   `json:"weight" sql:"weight"`
 	CreatedAt      *time.Time `json:"created_at" sql:"created_at"`
 	UpdatedAt      *time.Time `json:"updated_at" sql:"updated_at"`
 
@@ -32,9 +33,11 @@ type User struct {
 //CreateTokenString func creates a new jwt token
 func (u *User) CreateTokenString() string {
 	// Embed User information to `token`
-	token := jwt.NewWithClaims(jwt.GetSigningMethod("HS256"), &JWTUser{
+	token := jwt.NewWithClaims(jwt.GetSigningMethod("HS256"), &middleware.JWTUser{
 		ID:             u.ID,
 		FacebookUserID: u.FacebookUserID,
+		Weight:         *u.Weight,
+		Role:           u.Role,
 	})
 	// token -> string. Only server knows this secret (foobar).
 	tokenstring, err := token.SignedString([]byte(JWTSecret))
