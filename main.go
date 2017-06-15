@@ -27,14 +27,20 @@ func main() {
 	router.POST("/login", service.LogIn)
 	router.POST("/logout", service.LogOut)
 
-	router.GET("/user", service.GetUser)
+	router.GET("/user", service.GetUser) //not done
+	router.PUT("/user/:user_id", service.PutUser) //not done
 
 	router.GET("/challenge", service.GetChellenge)
 	router.POST("/challenge", service.PostChallenge)
 	router.PUT("/challenge/:challenge_id", service.PutChallenge)
 	router.DELETE("/challenge/:challenge_id", service.DeleteChallenge)
 
-	router.GET("/challenge/:challenge_id/post/:post", service.GetPost)
+	router.GET("/challenge/:challenge_id/post", service.GetPost)
+	router.POST("/challenge/:challenge_id/post" service.PostPost)
+	router.PUT("/challenge/:challenge_id/post/:post_id/like", service.LikePost)
+	router.PUT("/challenge/:challenge_id/post/:post_id/flag", service.FlagPost)
+	router.PUT("/challenge/:challenge_id/post/:post_id/unflag", service.UnFlagPost)
+	router.DELETE("/challenge/:challenge_id/post/:post_id", service.DeletePost)
 
 	router.Run(":" + port)
 }
