@@ -20,8 +20,9 @@ type Post struct {
 	CreatedAt   *time.Time `json:"created_at" sql:"created_at"`
 	UpdatedAt   *time.Time `json:"updated_at,omitempty" sql:"updated_at"`
 
-	Flags []*Flag `json:"flags" sql:"-"`
-	Likes []*Like `json:"likes" sql:"-"`
+	Location *geometry `json:"geo_coords" sql:"-"`
+	Flags    []*Flag   `json:"flags" sql:"-"`
+	Likes    []*Like   `json:"likes" sql:"-"`
 
 	Payload map[string]interface{} `json:"-"`
 }

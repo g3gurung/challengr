@@ -1,7 +1,6 @@
 package model
 
 import (
-	"encoding/json"
 	"errors"
 	"log"
 	"time"
@@ -13,29 +12,22 @@ type Score struct {
 	UserID         int64      `json:"user_id,omitempty" sql:"user_id"`
 	Exp            int        `json:"exp" sql:"exp"`
 	Coins          int64      `json:"coins" sql:"coins"`
-	LikesRemaining int        `json:"like_remaining" sql:"likes_remaining"`    //will be descresed every time when liking posts
-	LikesUpdatedAt *time.Time `json:"likes_updated_at" sql:"likes_updated_at"` //this will be set when the likes_remaining becomes zero
+	LikesRemaining int        `json:"like_remaining" sql:"likes_remaining"`              //will be descresed every time when liking posts
+	LikesUpdatedAt *time.Time `json:"likes_updated_at,omitempty" sql:"likes_updated_at"` //this will be set when the likes_remaining becomes zero
 	CreatedAt      time.Time  `json:"created_at" sql:"created_at"`
-	UpdatedAt      *time.Time `json:"updated_at" sql:"updated_at"`
-
-	LevelID int64 `json:"-" sql:"level_id"`
-
-	User        *User         `json:"user" sql:"-"`
-	TotalPost   int32         `json:"total_post" sql:"-"`
-	Level       *Level        `json:"level" sql:"-"`
-	BoughtItems []*BoughtItem `json:"bought_items" sql:"-"` //this will be fetched via user_id
+	UpdatedAt      *time.Time `json:"updated_at,omitempty" sql:"updated_at"`
 }
 
 //Create func inserts a new score for a new user
 func (s *Score) Create() (int, error) {
 
-	stmt, err := db.Prepare("INSERT INTO scores(user_id, exp, coins, likes_remaining, level_id, created_at) VALUES($1,$2,$3,$4,$5,$6);")
+	stmt, err := db.Prepare("INSERT INTO scores(user_id, exp, coins, likes_remaining, created_at) VALUES($1,$2,$3,$4,$5);")
 	if err != nil {
 		log.Printf("Create score: create prepare statement error: %v", err)
 		return 0, err
 	}
 
-	res, err := stmt.Exec(s.UserID, s.Exp, s.Coins, s.LikesRemaining, s.LevelID, time.Now())
+	res, err := stmt.Exec(s.UserID, s.Exp, s.Coins, s.LikesRemaining, time.Now())
 	if err != nil {
 		log.Printf("Create score: exec statement error: %v", err)
 		return 0, err
@@ -269,6 +261,7 @@ func (s *Score) DecreaseLikes(amount int) (int, error) {
 	return 0, err
 }
 
+/*
 //UpdateLevel func upgrades or degrades to specific level
 func (s *Score) UpdateLevel(levelID int64) (int, error) {
 	count, err := s.Count("WHERE id=$1 AND user_id=$2 AND $3 IN (SELECT id FROM levels)", s.ID, s.UserID, levelID)
@@ -311,7 +304,7 @@ func (s *Score) UpdateLevel(levelID int64) (int, error) {
 	}
 	return 0, err
 }
-
+*/
 //Count func counts the users from db
 func (s *Score) Count(whereClause string, args ...interface{}) (int64, error) {
 	var count int64
@@ -325,9 +318,12 @@ func (s *Score) Count(whereClause string, args ...interface{}) (int64, error) {
 }
 
 //Get func fetches the scores of the users
+/*
 func (s *Score) Get(whereClause string, args ...interface{}) ([]*Score, int, error) {
 	scoreList := []*Score{}
-	rows, err := db.Query("SELECT id, (SELECT row_to_json(row) FROM (SELECT id, name, role FROM users WHERE user.id=scores.user_id) row) as user, exp, coins, (SELECT row_to_json(levels) FROM levels WHERE levels.id=scores.level_id) as level, (SELECT COUNT(id) FROM posts WHERE posts.user_id=scores.user_id) AS total_post, (SELECT array_to_json(array_agg(bought_items)) FROM bought_items WHERE bought_items.user_id=scores.user_id) as bought_items, created_at, updated_at FROM flags WHERE post_id=posts.id) as flags FROM scores "+whereClause+";", args...)
+	rows, err := db.Query("SELECT id, (SELECT row_to_json(row) FROM (SELECT id, name, role FROM users WHERE user.id=scores.user_id) row) as user, exp, coins, (SELECT row_to_json(levels) FROM levels WHERE levels.id=scores.level_id) as level,
+	(SELECT COUNT(id) FROM posts WHERE posts.user_id=scores.user_id) AS total_post,
+	(SELECT array_to_json(array_agg(bought_items)) FROM bought_items WHERE bought_items.user_id=scores.user_id) as bought_items, created_at, updated_at FROM flags WHERE post_id=posts.id) as flags FROM scores "+whereClause+";", args...)
 	if err != nil {
 		log.Printf("Get scores: sql error %v", err)
 		return nil, 500, err
@@ -361,3 +357,4 @@ func (s *Score) Get(whereClause string, args ...interface{}) ([]*Score, int, err
 	}
 	return scoreList, 500, nil
 }
+*/
