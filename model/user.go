@@ -56,6 +56,13 @@ func (u *User) CreateTokenString() string {
 	return tokenstring
 }
 
+//PutValidate func updates a json payload
+func (u *User) PutValidate() []string {
+	errSlice := []string{}
+
+	return errSlice
+}
+
 //ParseNotAllowedJSON unmarshalls JSON payload to struct payload and fields. Plus parses the JSON payload.
 func (u *User) ParseNotAllowedJSON() []string {
 	errSlice := []string{}
