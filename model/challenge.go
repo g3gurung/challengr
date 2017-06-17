@@ -123,12 +123,6 @@ func (c *Challenge) Update() (int, error) {
 		sets = append(sets, "status=$"+strconv.Itoa(index))
 	}
 
-	if c.Weight != nil {
-		values[index] = *c.Weight
-		index = index + 1
-		sets = append(sets, "weight=$"+strconv.Itoa(index))
-	}
-
 	if c.UpdatedAt != nil {
 		values[index] = c.UpdatedAt
 		index = index + 1

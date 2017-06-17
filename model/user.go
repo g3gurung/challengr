@@ -31,7 +31,7 @@ type User struct {
 	LevelID  int64     `json:"-" sql:"level_id"`
 
 	//User        *User         `json:"user" sql:"-"`
-	TotalPost   int32         `json:"total_post" sql:"-"`
+	TotalPost   int64         `json:"total_post" sql:"-"`
 	Level       *Level        `json:"level" sql:"-"`
 	BoughtItems []*BoughtItem `json:"bought_items" sql:"-"` //this will be fetched via user_id
 	Score       *Score        `json:"score" sql:"score"`
@@ -54,13 +54,6 @@ func (u *User) CreateTokenString() string {
 		log.Fatalln(err)
 	}
 	return tokenstring
-}
-
-//PutValidate func updates a json payload
-func (u *User) PutValidate() []string {
-	errSlice := []string{}
-
-	return errSlice
 }
 
 //ParseNotAllowedJSON unmarshalls JSON payload to struct payload and fields. Plus parses the JSON payload.
@@ -206,6 +199,24 @@ func (u *User) Update() error {
 		values[index] = u.Name
 		index = index + 1
 		sets = append(sets, "name=$"+strconv.Itoa(index))
+	}
+
+	if u.Email != "" {
+		values[index] = u.Email
+		index = index + 1
+		sets = append(sets, "email=$"+strconv.Itoa(index))
+	}
+
+	if u.FacebookUserID != "" {
+		values[index] = u.FacebookUserID
+		index = index + 1
+		sets = append(sets, "facebook_user_id=$"+strconv.Itoa(index))
+	}
+
+	if u.LevelID != 0 {
+		values[index] = u.LevelID
+		index = index + 1
+		sets = append(sets, "level_id=$"+strconv.Itoa(index))
 	}
 
 	if u.Role != "" {

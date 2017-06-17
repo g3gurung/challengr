@@ -196,9 +196,9 @@ func DeleteChallenge(c *gin.Context) {
 
 	errStatus := 0
 	switch role {
-	case adminRole:
+	case constAdminRole:
 		errStatus, err = (&model.Challenge{ID: challengeID}).Delete()
-	case userRole:
+	case constUserRole:
 		errStatus, err = (&model.Challenge{ID: challengeID, UserID: userID}).AdminDelete()
 	default:
 		c.JSON(http.StatusForbidden, &model.ErrResp{Error: "Check token"})
@@ -226,9 +226,9 @@ func activeDeactiveChallenge(val string, c *gin.Context) {
 
 	errStatus := 0
 	switch role {
-	case adminRole:
+	case constAdminRole:
 		errStatus, err = (&model.Challenge{ID: challengeID, Status: val}).AdminUpdate()
-	case userRole:
+	case constUserRole:
 		errStatus, err = (&model.Challenge{ID: challengeID, UserID: userID, Status: val}).Update()
 	default:
 		c.JSON(http.StatusForbidden, &model.ErrResp{Error: "Check token"})

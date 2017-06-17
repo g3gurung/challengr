@@ -27,8 +27,15 @@ func main() {
 	router.POST("/login", service.LogIn)
 	router.POST("/logout", service.LogOut)
 
-	router.GET("/user", service.GetUser) //not done
-	router.PUT("/user/:user_id", service.PutUser) //not done
+	router.GET("/user", service.GetUser) 
+	router.PUT("/user/:user_id/weight", service.UpdateUserWeight) 
+	router.PUT("/user/:user_id/level", service.UpdateUserLevel)
+
+	router.PUT("/user/:user_id/score/:score_id/add_coins", service.AddCoins)
+	router.PUT("/user/:user_id/score/:score_id/subtract_coins", service.SubtractCoins)
+	router.PUT("/user/:user_id/score/:score_id/add_exp", service.AddExp)
+	router.PUT("/user/:user_id/score/:score_id/add_likes", service.AddLikes)
+	router.PUT("/user/:user_id/score/:score_id/reset_likes", service.ResetLikes)
 
 	router.GET("/challenge", service.GetChellenge)
 	router.POST("/challenge", service.PostChallenge)

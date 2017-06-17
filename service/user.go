@@ -135,8 +135,8 @@ func GetUser(c *gin.Context) {
 	c.JSON(http.StatusOK, &userlist)
 }
 
-//PutUser func is a handler for updateing a user info.
-func PutUser(c *gin.Context) {
+//UpdateUserWeight func is a handler for updateing a user info.
+func UpdateUserWeight(c *gin.Context) {
 	userID, ok := c.MustGet("user_id").(int64)
 	if !ok {
 		log.Printf("invalid userid in token, userid: %v", c.MustGet("user_id"))
@@ -182,9 +182,77 @@ func PutUser(c *gin.Context) {
 		return
 	}
 
-	if errSlice := user.PutValidate(); len(errSlice) > 0 {
-		log.Printf("user put validate err: %v", errSlice)
-		c.JSON(http.StatusBadRequest, &model.ErrResp{Error: "Invalid fields detected", Fields: &errSlice})
+	if user.Weight == nil {
+		c.JSON(http.StatusBadRequest, &model.ErrResp{Error: "Invalid payload", Fields: &[]string{"weight"}})
 		return
 	}
+
+	if err := (&model.User{ID: paramUserID, Weight: user.Weight}).Update(); err != nil {
+		log.Printf("Error user weight update: %v", err)
+		c.JSON(http.StatusInternalServerError, &model.ErrResp{Error: "Server error"})
+		return
+	}
+
+	c.JSON(http.StatusOK, &model.SuccessResp{Message: "User weight succesfully updated", Status: http.StatusOK})
+}
+
+//UpdateUserLevel func handler updates the user level
+func UpdateUserLevel(c *gin.Context) {
+	userID, ok := c.MustGet("user_id").(int64)
+	if !ok {
+		log.Printf("invalid userid in token, userid: %v", c.MustGet("user_id"))
+		c.JSON(http.StatusForbidden, &model.ErrResp{Error: "Invalid token"})
+		return
+	}
+
+	userRole, ok := c.MustGet("role").(string)
+	if !ok {
+		log.Printf("invalid userole in token, userid: %v", c.MustGet("role"))
+		c.JSON(http.StatusForbidden, &model.ErrResp{Error: "Invalid token"})
+		return
+	}
+
+	paramUserID, err := strconv.ParseInt(c.Param("user_id"), 10, 64)
+	if err != nil {
+		log.Printf("path parm user_id err: %v", err)
+		c.JSON(http.StatusBadRequest, &model.ErrResp{Error: "Invalid path param", Fields: &[]string{"user_id"}})
+		return
+	}
+
+	if userID != paramUserID && userRole != constAdminRole {
+		c.JSON(http.StatusMethodNotAllowed, &model.ErrResp{Error: "Not allowed please check token"})
+		return
+	}
+
+	var user model.User
+	if err := c.BindJSON(&user); err != nil {
+		log.Printf("user struct JSON bind error: %v", err)
+		c.JSON(http.StatusBadRequest, &model.ErrResp{Error: err.Error()})
+		return
+	}
+
+	if err := c.BindJSON(&user.Payload); err != nil {
+		log.Printf("user Payload JSON bind error: %v", err)
+		c.JSON(http.StatusBadRequest, &model.ErrResp{Error: err.Error()})
+		return
+	}
+
+	if errSlice := user.ParseNotAllowedJSON(); len(errSlice) > 0 {
+		log.Printf("user not allowed fields detected: %v", errSlice)
+		c.JSON(http.StatusBadRequest, &model.ErrResp{Error: "Some fields are not allowed", Fields: &errSlice})
+		return
+	}
+
+	if user.LevelID == 0 {
+		c.JSON(http.StatusBadRequest, &model.ErrResp{Error: "Invalid payload", Fields: &[]string{"level_id"}})
+		return
+	}
+
+	if err := (&model.User{ID: paramUserID, LevelID: user.LevelID}).Update(); err != nil {
+		log.Printf("Error user weight update: %v", err)
+		c.JSON(http.StatusInternalServerError, &model.ErrResp{Error: "Server error"})
+		return
+	}
+
+	c.JSON(http.StatusOK, &model.SuccessResp{Message: "User level succesfully updated", Status: http.StatusOK})
 }
