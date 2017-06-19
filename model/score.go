@@ -54,8 +54,8 @@ func (s *Score) Create() (int, error) {
 	return 0, nil
 }
 
-//UpdateExp func updates the experience points in db
-func (s *Score) UpdateExp(amount int) (int, error) {
+//AddExp func updates the experience points in db
+func (s *Score) AddExp(amount int) (int, error) {
 	count, err := s.Count("WHERE id=$1 AND user_id=$2", s.ID, s.UserID)
 	if err != nil {
 		log.Printf("Score count error: %v", err)
@@ -70,7 +70,7 @@ func (s *Score) UpdateExp(amount int) (int, error) {
 		return 409, errors.New("Conflict in records detected")
 	}
 
-	stmt, err := db.Prepare("UPDATE scores SET exp=$1, updated_at=$2 WHERE id=$3 AND user_id=$4;")
+	stmt, err := db.Prepare("UPDATE scores SET exp=exp+$1, updated_at=$2 WHERE id=$3 AND user_id=$4;")
 	if err != nil {
 		log.Printf("create prepare statement error: %v", err)
 		return 500, err
@@ -97,8 +97,8 @@ func (s *Score) UpdateExp(amount int) (int, error) {
 	return 0, nil
 }
 
-//UpdateCoins func updates coins on db
-func (s *Score) UpdateCoins(amount int64) (int, error) {
+//AddCoins func updates coins on db
+func (s *Score) AddCoins(amount int) (int, error) {
 	count, err := s.Count("WHERE id=$1 AND user_id=$2", s.ID, s.UserID)
 	if err != nil {
 		log.Printf("Score count error: %v", err)
@@ -113,7 +113,7 @@ func (s *Score) UpdateCoins(amount int64) (int, error) {
 		return 409, errors.New("Conflict in records detected")
 	}
 
-	stmt, err := db.Prepare("UPDATE scores SET coins=$1, updated_at=$2  WHERE id=$3 AND user_id=$4;")
+	stmt, err := db.Prepare("UPDATE scores SET coins=coins+($1), updated_at=$2  WHERE id=$3 AND user_id=$4;")
 	if err != nil {
 		log.Printf("create prepare statement error: %v", err)
 		return 500, err
