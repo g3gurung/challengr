@@ -77,7 +77,7 @@ func LogIn(c *gin.Context) {
 		return
 	}
 
-	if len(userList) != 0 {
+	if len(userList) == 1 {
 
 		if userList[0].Email != user.Email && userList[0].Name != user.Name {
 			err = user.UpdateFBFields("UPDATE users SET email=$1, name=$2 WHERE id=$3", user.Email, user.Name, user.ID)
@@ -98,21 +98,28 @@ func LogIn(c *gin.Context) {
 		return
 	}
 
+	if len(userList) != 0 {
+		log.Printf("multiple users detected: %v", userList)
+		c.JSON(http.StatusConflict, &model.ErrResp{Error: "Multiple users detected."})
+		return
+	}
+
 	if err = user.Create(); err != nil {
 		c.JSON(http.StatusBadRequest, &model.ErrResp{Error: "Server error"})
 		return
 	}
 
 	user.Token = user.CreateTokenString()
-	score := model.Score{UserID: user.ID, Exp: 0, Coins: 0, LikesRemaining: 20, LevelID: 0}
+	score := model.Score{UserID: user.ID, Exp: 0, Coins: 0, LikesRemaining: 20}
 
 	if status, err := score.Create(); err != nil {
-		c.JSON(status, &model.ErrResp{Error: err})
+		c.JSON(status, &model.ErrResp{Error: err.Error()})
 		return
 	}
 
-	score.User = &user
-	c.JSON(http.StatusOK, &score)
+	user.Score = &score
+
+	c.JSON(http.StatusOK, &user)
 }
 
 //LogOut func handler logs out a user based on an user_id and imei

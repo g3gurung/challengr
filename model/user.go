@@ -25,6 +25,7 @@ type User struct {
 	Weight         *float32   `json:"weight" sql:"weight"`
 	CreatedAt      *time.Time `json:"created_at" sql:"created_at"`
 	UpdatedAt      *time.Time `json:"updated_at" sql:"updated_at"`
+	DeletedAt      *time.Time `json:"deleted_at" sql:"deleted_at"`
 
 	Token    string    `json:"token,omitempty" sql:"-"`
 	Location *geometry `json:"geo_coords" sql:"-"`
@@ -116,7 +117,7 @@ func (u *User) Get(whereClause string, args ...interface{}) ([]*User, error) {
 	userList := []*User{}
 	rows, err := db.Query(`SELECT id, name, email, facebook_user_id, role, (SELECT COUNT(posts.id) FROM posts WHERE posts.user_id=users.user_id) AS total_post, (SELECT row_to_json(levels) FROM levels WHERE levels.id=users.level_id) as level, 
 	(SELECT array_to_json(array_agg(bought_items)) FROM bought_items WHERE bought_items.user_id=users.user_id) as bought_items,
-	(SELECT id, exp, coins, likes_remaining, created_at FROM scores WHERE scores.user_id=users.id) as score, created_at, updated_at FROM users `+whereClause, args...)
+	(SELECT id, exp, coins, likes_remaining, created_at FROM scores WHERE scores.user_id=users.id) as score, created_at, updated_at, deleted_at FROM users `+whereClause, args...)
 	if err != nil {
 		log.Printf("Get users: sql error %v", err)
 		return nil, err
@@ -126,7 +127,7 @@ func (u *User) Get(whereClause string, args ...interface{}) ([]*User, error) {
 		levelStr := ""
 		boughtItemsStr := ""
 		scoreStr := ""
-		if err = rows.Scan(&u.ID, &u.Name, &u.Email, &u.FacebookUserID, &u.Role, &u.TotalPost, &levelStr, &boughtItemsStr, &scoreStr, &u.CreatedAt, &u.UpdatedAt); err != nil {
+		if err = rows.Scan(&u.ID, &u.Name, &u.Email, &u.FacebookUserID, &u.Role, &u.TotalPost, &levelStr, &boughtItemsStr, &scoreStr, &u.CreatedAt, &u.UpdatedAt, &u.DeletedAt); err != nil {
 			log.Printf("scanning row to struct error: %v", err)
 			return nil, err
 		}
@@ -249,7 +250,7 @@ func (u *User) Update() error {
 		sets = append(sets, "updated_at=$"+strconv.Itoa(index))
 	}
 
-	stmt, err := db.Prepare("UPDATE users SET " + strings.Join(sets, ", ") + " WHERE id=" + fmt.Sprintf("%v", u.ID) + ";")
+	stmt, err := db.Prepare("UPDATE users SET " + strings.Join(sets, ", ") + " WHERE id=" + fmt.Sprintf("%v", u.ID) + " AND deleted IS NULL;")
 	if err != nil {
 		log.Printf("UPDATE user prepare statement error: %v", err)
 		return err

@@ -27,6 +27,12 @@ const constAdminRole = "admin"
 //userRole const is used as a role string for admin
 const constUserRole = "user"
 
+//constPostActive const us used as a status for a challenge
+const constChallengeActive = "active"
+
+//constChallengeInActive const us used as a status for a challenge
+const constChallengeInActive = "inactive"
+
 func init() {
 	config := aws.NewConfig().WithRegion(os.Getenv("PORT"))
 	config.WithCredentials(credentials.NewStaticCredentials(os.Getenv("AWS-ID"), os.Getenv("AWS-KEY"), ""))

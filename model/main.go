@@ -7,6 +7,7 @@ import (
 	"os"
 
 	"github.com/challengr/middleware"
+	_ "github.com/lib/pq"
 )
 
 //roleUser is used for assigning role to an user
@@ -24,16 +25,16 @@ func init() {
 	dbPassword := os.Getenv("DB_PASSWORD")
 	dbSslMode := "disable"
 	if dbUser == "" {
-		dbUser = "cubicasa"
+		dbUser = "challengr"
 	}
 	if dbName == "" {
-		dbName = "conversionV1"
+		dbName = "challengrdb"
 	}
 	if dbHost == "" {
-		dbHost = "conversionv1.cwnxsiqll2vc.us-west-2.rds.amazonaws.com:5432"
+		dbHost = "challengr.cd61ijduodvj.us-east-1.rds.amazonaws.com:5432"
 	}
 	if dbPassword == "" {
-		dbPassword = "20Cubicasa16"
+		dbPassword = "20Challengr17"
 	}
 
 	dataSource := fmt.Sprintf("postgres://%s:%s@%s/%s?sslmode=%s",

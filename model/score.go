@@ -56,7 +56,7 @@ func (s *Score) Create() (int, error) {
 
 //AddExp func updates the experience points in db
 func (s *Score) AddExp(amount int) (int, error) {
-	count, err := s.Count("WHERE id=$1 AND user_id=$2", s.ID, s.UserID)
+	count, err := s.Count("WHERE id=$1 AND user_id=$2 AND deleted_at IS NULL", s.ID, s.UserID)
 	if err != nil {
 		log.Printf("Score count error: %v", err)
 		return 500, errors.New("Server error")
@@ -99,7 +99,7 @@ func (s *Score) AddExp(amount int) (int, error) {
 
 //AddCoins func updates coins on db
 func (s *Score) AddCoins(amount int) (int, error) {
-	count, err := s.Count("WHERE id=$1 AND user_id=$2", s.ID, s.UserID)
+	count, err := s.Count("WHERE id=$1 AND user_id=$2 AND deleted_at IS NULL", s.ID, s.UserID)
 	if err != nil {
 		log.Printf("Score count error: %v", err)
 		return 500, errors.New("Server error")
@@ -140,6 +140,7 @@ func (s *Score) AddCoins(amount int) (int, error) {
 	return 0, err
 }
 
+/*
 //ResetLikes func updates likes on db
 func (s *Score) ResetLikes(amount int) (int, error) {
 	count, err := s.Count("WHERE id=$1 AND user_id=$2 AND likes_remaining=0 AND likes_updated_at < NOW() - INTERVAL '1 hour'", s.ID, s.UserID)
@@ -179,10 +180,11 @@ func (s *Score) ResetLikes(amount int) (int, error) {
 	}
 	return 0, err
 }
+*/
 
 //AddLikes func updates likes on db
 func (s *Score) AddLikes(amount int) (int, error) {
-	count, err := s.Count("WHERE id=$1 AND user_id=$2", s.ID, s.UserID)
+	count, err := s.Count("WHERE id=$1 AND user_id=$2 AND deleted_at IS NULL", s.ID, s.UserID)
 	if err != nil {
 		log.Printf("Score count error: %v", err)
 		return 500, errors.New("Server error")
@@ -220,6 +222,7 @@ func (s *Score) AddLikes(amount int) (int, error) {
 	return 0, err
 }
 
+/*
 //DecreaseLikes func subtracts one like from likes_remaining in db
 func (s *Score) DecreaseLikes(amount int) (int, error) {
 	count, err := s.Count("WHERE id=$1 AND user_id=$2 AND (likes_remaining - $3) >= 0", s.ID, s.UserID, amount)
@@ -261,7 +264,7 @@ func (s *Score) DecreaseLikes(amount int) (int, error) {
 	return 0, err
 }
 
-/*
+
 //UpdateLevel func upgrades or degrades to specific level
 func (s *Score) UpdateLevel(levelID int64) (int, error) {
 	count, err := s.Count("WHERE id=$1 AND user_id=$2 AND $3 IN (SELECT id FROM levels)", s.ID, s.UserID, levelID)
@@ -305,6 +308,7 @@ func (s *Score) UpdateLevel(levelID int64) (int, error) {
 	return 0, err
 }
 */
+
 //Count func counts the users from db
 func (s *Score) Count(whereClause string, args ...interface{}) (int64, error) {
 	var count int64

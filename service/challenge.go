@@ -49,10 +49,10 @@ func GetChellenge(c *gin.Context) {
 	case "hot":
 		orderByStr := "(((SELECT COUNT(posts.id) FROM posts WHERE posts.challenge_id=challenges.id AND (SELECT COUNT(likes.id) FROM likes WHERE likes.post_id=posts.id)) / (SELECT COUNT(posts.id) FROM posts WHERE posts.challenge_id=id)) * (SELECT COUNT(posts.id) FROM posts WHERE posts.challenge_id=id) / 100)"
 		orderByStr = "(" + orderByStr + " + " + orderByStr + " * challenges.weight) DESC"
-		whereQueryStr = "WHERE " + strings.Join(whereClause, " AND ") + " AND status='" + status + "' AND deleted_at IS NULL ORDER BY " + orderByStr + " LIMIT 20"
+		whereQueryStr = "WHERE " + strings.Join(whereClause, " AND ") + " AND status='" + status + "' AND deleted_at IS NULL ORDER BY " + orderByStr + " LIMIT 20;"
 	case "fresh":
 		orderByStr := "challenges.created_at DESC, (SELECT COUNT(posts.id) FROM posts WHERE posts.challenge_id=challenges.id) DESC"
-		whereQueryStr = "WHERE " + strings.Join(whereClause, " AND ") + " AND status='" + status + "' AND deleted_at IS NULL ORDER BY " + orderByStr + " LIMIT 20"
+		whereQueryStr = "WHERE " + strings.Join(whereClause, " AND ") + " AND status='" + status + "' AND deleted_at IS NULL ORDER BY " + orderByStr + " LIMIT 20;"
 
 	default:
 		c.JSON(http.StatusBadRequest, &model.ErrResp{Error: "Invalid query strings", Fields: &[]string{"type"}})

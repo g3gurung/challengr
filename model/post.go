@@ -166,7 +166,7 @@ func (p *Post) Flag(userID int64) (int, error) {
 		return 409, err
 	}
 
-	stmt, err := db.Prepare("INSERT INTO flags (user_id, post_id, created_at) SELECT $1, $2, $3 WHERE NOT EXISTS (SELECT id FROM flags WHERE user_id=$4 AND post_id=$5)")
+	stmt, err := db.Prepare("INSERT INTO flags (user_id, post_id, created_at) VALUES ($1, $2, $3) WHERE NOT EXISTS (SELECT id FROM flags WHERE user_id=$4 AND post_id=$5)")
 	if err != nil {
 		log.Printf("create prepare statement error: %v", err)
 		return 500, err
@@ -228,7 +228,7 @@ func (p *Post) UnFlag(userID int64) (int, error) {
 
 //Like func likes a post
 func (p *Post) Like(userID int64) (int, error) {
-	count, err := p.Count("WHERE id=$1 AND challenge_id=$2", p.ID, p.ChallengeID)
+	count, err := p.Count("WHERE id=$1 AND challenge_id=$2 AND deleted_at IS NULL", p.ID, p.ChallengeID)
 	if err != nil {
 		log.Printf("Post flag: error on fetching Post record count: %v", err)
 		return 500, err
@@ -267,7 +267,7 @@ func (p *Post) Like(userID int64) (int, error) {
 
 //Delete func deletes the post record of the user. Delete meaning it doesnt purge it. Just hides it.
 func (p *Post) Delete() (int, error) {
-	count, err := p.Count("WHERE id=$1 AND challenge_id=$2 AND user_id=$3", p.ID, p.ChallengeID, p.UserID)
+	count, err := p.Count("WHERE id=$1 AND challenge_id=$2 AND user_id=$3 AND deleted_at IS NULL", p.ID, p.ChallengeID, p.UserID)
 	if err != nil {
 		log.Printf("Post delete: error on fetching Post record count: %v", err)
 		return 500, err
@@ -310,7 +310,7 @@ func (p *Post) Delete() (int, error) {
 
 //AdminDelete func deletes the post record of the user. Delete meaning it doesnt purge it. Just hides it.
 func (p *Post) AdminDelete() (int, error) {
-	count, err := p.Count("WHERE id=$1 AND challenge_id=$2", p.ID, p.ChallengeID)
+	count, err := p.Count("WHERE id=$1 AND challenge_id=$2 AND deleted_at IS NULL", p.ID, p.ChallengeID)
 	if err != nil {
 		log.Printf("Post delete: error on fetching Post record count: %v", err)
 		return 500, err

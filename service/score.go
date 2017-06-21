@@ -60,7 +60,6 @@ func AddCoins(c *gin.Context) {
 		return
 	}
 
-	var status int
 	if status, err := (&model.Score{ID: paramScoreID, UserID: userID}).AddCoins(amount.Amount); err != nil {
 		log.Printf("add coinsdb error: %v", err)
 		c.JSON(status, &model.ErrResp{Error: err.Error()})
@@ -120,7 +119,6 @@ func AddExp(c *gin.Context) {
 		return
 	}
 
-	var status int
 	if status, err := (&model.Score{ID: paramScoreID, UserID: userID}).AddExp(amount.Amount); err != nil {
 		log.Printf("add exp db error: %v", err)
 		c.JSON(status, &model.ErrResp{Error: err.Error()})
@@ -180,7 +178,6 @@ func AddLikes(c *gin.Context) {
 		return
 	}
 
-	var status int
 	if status, err := (&model.Score{ID: paramScoreID, UserID: userID}).AddLikes(amount.Amount); err != nil {
 		log.Printf("add likes db error: %v", err)
 		c.JSON(status, &model.ErrResp{Error: err.Error()})

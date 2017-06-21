@@ -72,7 +72,7 @@ func (c *Challenge) Create() error {
 
 	geometryValue := "ST_GeomFromGeoJSON('" + string(geomStr) + "')"
 
-	stmt, err := db.Prepare("INSERT INTO cahllenge(user_id, name, description, likes_needed_per_post, status, weight, geometry, created_at) VALUES($1,$2,$3,$4,$5" + geometryValue + ",$6);")
+	stmt, err := db.Prepare("INSERT INTO challenges (user_id, name, description, likes_needed_per_post, status, weight, geometry, created_at) VALUES($1,$2,$3,$4,$5" + geometryValue + ",$6);")
 	if err != nil {
 		log.Printf("create prepare statement error: %v", err)
 		return err
@@ -140,7 +140,7 @@ func (c *Challenge) Update() (int, error) {
 		sets = append(sets, "updated_at="+geometryValue)
 	}
 
-	stmt, err := db.Prepare("UPDATE challenges SET " + strings.Join(sets, ", ") + " WHERE id=" + fmt.Sprintf("%v", c.ID) + " AND user_id=" + fmt.Sprintf("%v", c.UserID) + ";")
+	stmt, err := db.Prepare("UPDATE challenges SET " + strings.Join(sets, ", ") + " WHERE deleted_at IS NULL AND id=" + fmt.Sprintf("%v", c.ID) + " AND user_id=" + fmt.Sprintf("%v", c.UserID) + ";")
 	if err != nil {
 		log.Printf("UPDATE challegne prepare statement error: %v", err)
 		return 500, errors.New("Server error")
@@ -200,7 +200,7 @@ func (c *Challenge) AdminUpdate() (int, error) {
 		sets = append(sets, "updated_at=$"+strconv.Itoa(index))
 	}
 
-	stmt, err := db.Prepare("UPDATE challenges SET " + strings.Join(sets, ", ") + " WHERE id=" + fmt.Sprintf("%v", c.ID) + ";")
+	stmt, err := db.Prepare("UPDATE challenges SET " + strings.Join(sets, ", ") + " deleted_at IS NULL AND WHERE id=" + fmt.Sprintf("%v", c.ID) + ";")
 	if err != nil {
 		log.Printf("UPDATE challegne prepare statement error: %v", err)
 		return 500, errors.New("Server error")
@@ -234,7 +234,7 @@ func (c *Challenge) AdminUpdate() (int, error) {
 func (c *Challenge) Get(whereClause string, args ...interface{}) ([]*Challenge, error) {
 	challengeList := []*Challenge{}
 
-	rows, err := db.Query("SELECT id, name, description, likes_needed_per_post, ST_AsGeoJSON(geometry) AS location, (SELECT COUNT(id) FROM posts WHERE posts.challenge_id=challenges.id) AS total_post, created_at, updated_at FROM flags WHERE post_id=posts.id) as flags FROM posts "+whereClause+" ORDER BY created_at DESC;", args...)
+	rows, err := db.Query("SELECT id, name, description, likes_needed_per_post, ST_AsGeoJSON(geometry) AS location, (SELECT COUNT(id) FROM posts WHERE posts.challenge_id=challenges.id) AS total_post, created_at, updated_at FROM flags WHERE post_id=posts.id) as flags FROM challenges "+whereClause, args...)
 	if err != nil {
 		log.Printf("Get users: sql error %v", err)
 		return nil, err
@@ -272,7 +272,7 @@ func (c *Challenge) Count(whereClause string, args ...interface{}) (int64, error
 
 //Delete func deletes the post record of the user. Delete meaning it doesnt purge it. Just hides it.
 func (c *Challenge) Delete() (int, error) {
-	count, err := c.Count("WHERE id=$1 AND user_id=$2", c.ID, c.UserID)
+	count, err := c.Count("WHERE id=$1 AND user_id=$2 AND deleted_at IS NULL", c.ID, c.UserID)
 	if err != nil {
 		log.Printf("challenge delete: error on fetching Post record count: %v", err)
 		return 500, errors.New("Server error")
@@ -315,7 +315,7 @@ func (c *Challenge) Delete() (int, error) {
 
 //AdminDelete func deletes the post record of the user. Delete meaning it doesnt purge it. Just hides it.
 func (c *Challenge) AdminDelete() (int, error) {
-	count, err := c.Count("WHERE id=$1", c.ID)
+	count, err := c.Count("WHERE id=$1 AND deleted_at IS NULL", c.ID)
 	if err != nil {
 		log.Printf("challenge delete: error on fetching Post record count: %v", err)
 		return 500, errors.New("Server error")

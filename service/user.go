@@ -18,7 +18,7 @@ import (
 func GetUser(c *gin.Context) {
 	var (
 		err      error
-		userlist []*model.User
+		userList []*model.User
 	)
 	queryType := c.Query("type")
 	switch queryType {
@@ -31,6 +31,8 @@ func GetUser(c *gin.Context) {
 				c.JSON(http.StatusBadRequest, &model.ErrResp{Error: "Invalid query string", Fields: &[]string{"last_id"}})
 				return
 			}
+		} else {
+			lastID = 0
 		}
 
 		queryRadius := strings.TrimSpace(c.Query("radius"))
@@ -56,7 +58,7 @@ func GetUser(c *gin.Context) {
 			return
 		}
 		geomQ := string("ST_Distance_Sphere(geometry, ST_MakePoint(" + queryLong + "," + queryLat + ")) <= " + queryRadius)
-		userList, err := (&model.User{}).Get("WHERE last_id>$1 AND deleted_at IS NULL AND " + geomQ + " ORDER BY users.level_id DESC LIMIT 100")
+		userList, err = (&model.User{}).Get("WHERE last_id>$1 AND deleted_at IS NULL AND "+geomQ+" ORDER BY users.level_id DESC LIMIT 100", lastID)
 	default:
 		IDs := []int64{}
 		queryIDs := strings.Split(c.Query("ids"), ",")
@@ -99,12 +101,12 @@ func GetUser(c *gin.Context) {
 		idBuilder := []string{}
 		fbIDQBuilder := []string{}
 		index := 0
-		for i, v := range IDs {
+		for _, v := range IDs {
 			index = index + 1
 			args[index] = v
 			idBuilder = append(idBuilder, "users.id == $"+strconv.Itoa(index))
 		}
-		for i, v := range fbIDs {
+		for _, v := range fbIDs {
 			index = index + 1
 			args[index] = v
 			fbIDQBuilder = append(fbIDQBuilder, "users.facebook_user_id = $"+strconv.Itoa(index))
@@ -123,7 +125,7 @@ func GetUser(c *gin.Context) {
 				q = "(" + fbIDQ + ")"
 			}
 		}
-		userList, err := (&model.User{}).Get("WHERE deleted_at IS NULL AND "+q+" ORDER BY users.level_id DESC", args)
+		userList, err = (&model.User{}).Get("WHERE deleted_at IS NULL AND "+q+" ORDER BY users.level_id DESC", args)
 	}
 
 	if err != nil {
@@ -132,7 +134,7 @@ func GetUser(c *gin.Context) {
 		return
 	}
 
-	c.JSON(http.StatusOK, &userlist)
+	c.JSON(http.StatusOK, &userList)
 }
 
 //UpdateUserWeight func is a handler for updateing a user info.
