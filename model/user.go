@@ -282,7 +282,7 @@ func (u *User) Update() error {
 
 //Delete func deletes the user. Delete meaning it doesnt purge it. Just hides it.
 func (u *User) Delete() error {
-	count, err := u.Count("WHERE id=$1", u.ID)
+	count, err := u.Count("WHERE id=$1 AND deleted_at IS NULL", u.ID)
 	if err != nil {
 		log.Printf("User delete: error on fetching User record count: %v", err)
 		return err
