@@ -127,22 +127,22 @@ func (u *User) Get(whereClause string, args ...interface{}) ([]*User, error) {
 		levelStr := ""
 		boughtItemsStr := ""
 		scoreStr := ""
-		if err = rows.Scan(&u.ID, &u.Name, &u.Email, &u.FacebookUserID, &u.Role, &u.TotalPost, &levelStr, &boughtItemsStr, &scoreStr, &u.CreatedAt, &u.UpdatedAt, &u.DeletedAt); err != nil {
+		if err = rows.Scan(&user.ID, &user.Name, &user.Email, &user.FacebookUserID, &user.Role, &user.TotalPost, &levelStr, &boughtItemsStr, &scoreStr, &user.CreatedAt, &user.UpdatedAt, &user.DeletedAt); err != nil {
 			log.Printf("scanning row to struct error: %v", err)
 			return nil, err
 		}
 
-		if err = json.Unmarshal([]byte(scoreStr), &u.Score); err != nil {
+		if err = json.Unmarshal([]byte(scoreStr), &user.Score); err != nil {
 			log.Printf("Unmarshaling of score subquery error: %v", err)
 			return nil, err
 		}
 
-		if err = json.Unmarshal([]byte(levelStr), &u.Level); err != nil {
+		if err = json.Unmarshal([]byte(levelStr), &user.Level); err != nil {
 			log.Printf("Unmarshaling of level subquery error: %v", err)
 			return nil, err
 		}
 
-		if err = json.Unmarshal([]byte(boughtItemsStr), &u.BoughtItems); err != nil {
+		if err = json.Unmarshal([]byte(boughtItemsStr), &user.BoughtItems); err != nil {
 			log.Printf("Unmarshaling of bought items subquery error: %v", err)
 			return nil, err
 		}

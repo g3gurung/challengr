@@ -63,7 +63,7 @@ func (o *OneSignal) Get(whereClause string, args ...interface{}) ([]*OneSignal, 
 	}
 	for rows.Next() {
 		oneSignal := OneSignal{}
-		if err = rows.Scan(&o.ID, &o.UserID, &o.Imei, &o.PlayerID, &o.CreatedAt, &o.UpdatedAt); err != nil {
+		if err = rows.Scan(&oneSignal.ID, &oneSignal.UserID, &oneSignal.Imei, &oneSignal.PlayerID, &oneSignal.CreatedAt, &oneSignal.UpdatedAt); err != nil {
 			log.Printf("scanning row to struct error: %v", err)
 			return nil, err
 		}

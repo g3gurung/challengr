@@ -128,17 +128,17 @@ func (p *Post) Get(whereClause string, args ...interface{}) ([]*Post, error) {
 		post := Post{}
 		likesStr := ""
 		flagsStr := ""
-		if err = rows.Scan(&p.ID, &p.LikesNeeded, &p.FileURL, &p.ContentType, &p.ContentSize, &p.CreatedAt, &p.UpdatedAt, &likesStr, &flagsStr); err != nil {
+		if err = rows.Scan(&post.ID, &post.LikesNeeded, &post.FileURL, &post.ContentType, &post.ContentSize, &post.CreatedAt, &post.UpdatedAt, &likesStr, &flagsStr); err != nil {
 			log.Printf("scanning row to struct error: %v", err)
 			return nil, err
 		}
 
-		if err = json.Unmarshal([]byte(likesStr), &p.Likes); err != nil {
+		if err = json.Unmarshal([]byte(likesStr), &post.Likes); err != nil {
 			log.Printf("Unmarshaling of likes subquery error: %v", err)
 			return nil, err
 		}
 
-		if err = json.Unmarshal([]byte(flagsStr), &p.Flags); err != nil {
+		if err = json.Unmarshal([]byte(flagsStr), &post.Flags); err != nil {
 			log.Printf("Unmarshaling of flags subquery error: %v", err)
 			return nil, err
 		}

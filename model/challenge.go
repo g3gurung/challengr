@@ -242,12 +242,12 @@ func (c *Challenge) Get(whereClause string, args ...interface{}) ([]*Challenge, 
 	for rows.Next() {
 		challenge := Challenge{}
 		geomStr := ""
-		if err = rows.Scan(&c.ID, &c.Name, &c.Description, &c.LikesNeededPerPost, &geomStr, &c.TotalPost, &c.CreatedAt, &c.UpdatedAt); err != nil {
+		if err = rows.Scan(&challenge.ID, &challenge.Name, &challenge.Description, &challenge.LikesNeededPerPost, &geomStr, &challenge.TotalPost, &challenge.CreatedAt, &challenge.UpdatedAt); err != nil {
 			log.Printf("scanning row to struct error: %v", err)
 			return nil, err
 		}
 
-		if err = json.Unmarshal([]byte(geomStr), &c.Location); err != nil {
+		if err = json.Unmarshal([]byte(geomStr), &challenge.Location); err != nil {
 			log.Printf("Unmarshaling of location subquery error: %v", err)
 			return nil, err
 		}
