@@ -119,7 +119,7 @@ func (p *Post) Count(whereClause string, args ...interface{}) (int64, error) {
 //Get func counts the total posts in db
 func (p *Post) Get(whereClause string, args ...interface{}) ([]*Post, error) {
 	postList := []*Post{}
-	rows, err := db.Query("SELECT id, likes_needed, file_url, content_type, content_size, created_at, updated_at, (SELECT array_to_json(array_agg(likes)) FROM likes WHERE post_id=posts.id) as likes, (SELECT array_to_json(array_agg(flags)) FROM flags WHERE post_id=posts.id) as flags FROM posts "+whereClause+" ORDER BY created_at DESC;", args...)
+	rows, err := db.Query("SELECT id, likes_needed, file_url, content_type, content_size, created_at, updated_at, (SELECT COALESCE(array_to_json(array_agg(likes)), '[]') FROM likes WHERE post_id=posts.id) as likes, (SELECT COALESCE(array_to_json(array_agg(flags)), '[]') FROM flags WHERE post_id=posts.id) as flags FROM posts "+whereClause+" ORDER BY created_at DESC;", args...)
 	if err != nil {
 		log.Printf("Get users: sql error %v", err)
 		return nil, err

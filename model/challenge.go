@@ -234,7 +234,7 @@ func (c *Challenge) AdminUpdate() (int, error) {
 func (c *Challenge) Get(whereClause string, args ...interface{}) ([]*Challenge, error) {
 	challengeList := []*Challenge{}
 
-	rows, err := db.Query("SELECT id, name, description, likes_needed_per_post, ST_AsGeoJSON(geometry) AS location, (SELECT COUNT(id) FROM posts WHERE posts.challenge_id=challenges.id) AS total_post, created_at, updated_at FROM flags WHERE post_id=posts.id) as flags FROM challenges "+whereClause, args...)
+	rows, err := db.Query("SELECT id, name, description, likes_needed_per_post, ST_AsGeoJSON(geometry) AS location, (SELECT COUNT(id) FROM posts WHERE posts.challenge_id=challenges.id) AS total_post, created_at, updated_at FROM challenges "+whereClause, args...)
 	if err != nil {
 		log.Printf("Get users: sql error %v", err)
 		return nil, err

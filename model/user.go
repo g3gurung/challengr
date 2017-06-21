@@ -116,8 +116,8 @@ func (u *User) Create() error {
 func (u *User) Get(whereClause string, args ...interface{}) ([]*User, error) {
 	userList := []*User{}
 	rows, err := db.Query(`SELECT id, name, email, facebook_user_id, role, (SELECT COUNT(posts.id) FROM posts WHERE posts.user_id=users.user_id) AS total_post, (SELECT row_to_json(levels) FROM levels WHERE levels.id=users.level_id) as level, 
-	(SELECT array_to_json(array_agg(bought_items)) FROM bought_items WHERE bought_items.user_id=users.user_id) as bought_items,
-	(SELECT id, exp, coins, likes_remaining, created_at FROM scores WHERE scores.user_id=users.id) as score, created_at, updated_at, deleted_at FROM users `+whereClause, args...)
+	(SELECT COALESCE(array_to_json(array_agg(bought_items)), '[]') FROM bought_items WHERE bought_items.user_id=users.user_id) as bought_items, SELECT row_to_json(score) FROM 
+	(SELECT id, exp, coins, likes_remaining, created_at FROM scores WHERE scores.user_id=users.id) score, created_at, updated_at, deleted_at FROM users `+whereClause, args...)
 	if err != nil {
 		log.Printf("Get users: sql error %v", err)
 		return nil, err
