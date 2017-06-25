@@ -19,7 +19,7 @@ type Challenge struct {
 	Description        *string    `json:"description" sql:"description"`
 	Status             string     `json:"status" sql:"status"`
 	Weight             *float32   `json:"weight" sql:"weight"`
-	CreatedAt          *time.Time `json:"created_at" sql:"created_at"`
+	CreatedAt          time.Time  `json:"created_at" sql:"created_at"`
 	UpdatedAt          *time.Time `json:"updated_at" sql:"updated_at"`
 
 	TotalPost int64     `json:"total_post" sql:"-"`
@@ -61,8 +61,7 @@ func (c *Challenge) PostValidate() []string {
 
 //Create func inserts a new challenge in the db
 func (c *Challenge) Create() error {
-	now := time.Now()
-	c.CreatedAt = &now
+	c.CreatedAt = time.Now()
 
 	geomStr, err := json.Marshal(c.Location)
 	if err != nil {

@@ -77,7 +77,7 @@ func GetChellenge(c *gin.Context) {
 //PostChallenge func handler creates a new challenge
 func PostChallenge(c *gin.Context) {
 	userID := c.MustGet("user_id").(int64)
-	//facebookUserID := c.MustGet("facebook_user_id").(string)
+	userRole := c.MustGet("role").(string)
 	weight := c.MustGet("weight").(float32)
 
 	var challenge model.Challenge
@@ -97,6 +97,20 @@ func PostChallenge(c *gin.Context) {
 		log.Printf("challenge not allowed fields detected: %v", errSlice)
 		c.JSON(http.StatusBadRequest, &model.ErrResp{Error: "Some fields are not allowed", Fields: &errSlice})
 		return
+	}
+
+	if userRole != constAdminRole {
+		usersList, err := (&model.User{}).Get("WHERE id=$1", userID)
+		if err != nil {
+			log.Printf("User fetch error: %v", err)
+			c.JSON(http.StatusInternalServerError, &model.ErrResp{Error: "Server error"})
+			return
+		}
+		if usersList[0].LevelID < 5 {
+			log.Printf("User levelID: %v, must be 5 or bigger", usersList[0].LevelID)
+			c.JSON(http.StatusMethodNotAllowed, &model.ErrResp{Error: "Not allowed. Need level 5 or more."})
+			return
+		}
 	}
 
 	if errSlice := challenge.PostValidate(); len(errSlice) > 0 {
