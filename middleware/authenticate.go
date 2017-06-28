@@ -2,7 +2,6 @@ package middleware
 
 import (
 	"log"
-	"time"
 
 	"net/http"
 
@@ -24,7 +23,6 @@ func respondWithError(code int, message string, c *gin.Context) {
 //Authenticate func middleware authenticates incoming request
 func Authenticate() gin.HandlerFunc {
 	return func(c *gin.Context) {
-		t := time.Now()
 		tokenstring := c.Query("token")
 		if tokenstring == "" {
 			tokenstring = c.Request.Header.Get("access-token")
@@ -61,13 +59,5 @@ func Authenticate() gin.HandlerFunc {
 		// before request
 
 		c.Next()
-
-		// after request
-		latency := time.Since(t)
-		log.Print(latency)
-
-		// access the status we are sending
-		status := c.Writer.Status()
-		log.Println(status)
 	}
 }
