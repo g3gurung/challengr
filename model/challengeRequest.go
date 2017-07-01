@@ -28,9 +28,10 @@ type ChallengeRequest struct {
 func (c *ChallengeRequest) ParseNotAllowedJSON() []string {
 	errSlice := []string{}
 
-	delete(c.Payload, "from_id")
 	delete(c.Payload, "to_id")
 	delete(c.Payload, "message")
+	delete(c.Payload, "challenge_id")
+	delete(c.Payload, "status")
 
 	for key := range c.Payload {
 		errSlice = append(errSlice, key)
@@ -49,6 +50,10 @@ func (c *ChallengeRequest) PostValidate() []string {
 
 	if c.ToID <= 0 {
 		errSlice = append(errSlice, "to_id")
+	}
+
+	if c.ChallengeID <= 0 {
+		errSlice = append(errSlice, "cahllenge_id")
 	}
 
 	return errSlice
@@ -146,7 +151,7 @@ func (c *ChallengeRequest) Create() error {
 
 //UpdateStatus func updates the status
 func (c *ChallengeRequest) UpdateStatus(status string) (int, error) {
-	count, err := c.Count("WHERE id=$1 AND to_id=$2", c.ID, c.ToID)
+	count, err := c.Count("WHERE id=$1 AND to_id=$2 AND status='open'", c.ID, c.ToID)
 	if err != nil {
 		log.Printf("count challenge request err: %v", err)
 		return http.StatusInternalServerError, errors.New("Sever error")
@@ -154,28 +159,20 @@ func (c *ChallengeRequest) UpdateStatus(status string) (int, error) {
 
 	if count != 1 {
 		log.Printf("challenge rewuest count: %v, must be 1", count)
-		return http.StatusBadRequest, errors.New("Invalid challenge_id and to_id")
+		return http.StatusNotFound, errors.New("challenge request not found")
 	}
 
-	stmt, err := db.Prepare("UPDATE challenge_requests SET (status) VALUES($1);")
+	stmt, err := db.Prepare("UPDATE challenge_requests SET status=$1 WHERE id=$2 AND to_id=$3 AND status='open';")
 	if err != nil {
 		log.Printf("create prepare statement error: %v", err)
 		return http.StatusInternalServerError, errors.New("Sever error")
 	}
 
-	res, err := stmt.Exec(status)
+	res, err := stmt.Exec(status, c.ID, c.ToID)
 	if err != nil {
 		log.Printf("exec statement error: %v", err)
 		return http.StatusInternalServerError, errors.New("Sever error")
 	}
-
-	c.ID, err = res.LastInsertId()
-	if err != nil {
-		log.Printf("last insert id error: %v", err)
-		return http.StatusInternalServerError, errors.New("Sever error")
-	}
-
-	log.Printf("ChallengeRequest successfully created with id %v", c.ID)
 
 	affected, err := res.RowsAffected()
 	if err != nil {
@@ -184,7 +181,51 @@ func (c *ChallengeRequest) UpdateStatus(status string) (int, error) {
 	}
 	if affected == 0 {
 		log.Printf("rows effected -> %v", affected)
-		return http.StatusNotFound, errors.New("Not found")
+		return http.StatusNotFound, errors.New("challenge request Not found")
+	}
+
+	err = db.QueryRow("SELECT challenge_id FROM challenge_requests WHERE id=$1;", c.ID).Scan(c.ChallengeID)
+	if err != nil {
+		log.Printf("seelct challenge_id form challenge_requests err -> %v", err)
+		return http.StatusInternalServerError, errors.New("Server error")
+	}
+
+	return 0, nil
+}
+
+//Delete func updates the status
+func (c *ChallengeRequest) Delete() (int, error) {
+	count, err := c.Count("WHERE id=$1 AND from_id=$2 AND status='open'", c.ID, c.FromID)
+	if err != nil {
+		log.Printf("count challenge request err: %v", err)
+		return http.StatusInternalServerError, errors.New("Sever error")
+	}
+
+	if count != 1 {
+		log.Printf("challenge rewuest count: %v, must be 1", count)
+		return http.StatusNotFound, errors.New("challenge request not found")
+	}
+
+	stmt, err := db.Prepare("DELETE FROM challenge_requests WHERE id=$1 AND from_id=$2 AND status='open';")
+	if err != nil {
+		log.Printf("create prepare statement error: %v", err)
+		return http.StatusInternalServerError, errors.New("Sever error")
+	}
+
+	res, err := stmt.Exec(c.ID, c.FromID)
+	if err != nil {
+		log.Printf("exec statement error: %v", err)
+		return http.StatusInternalServerError, errors.New("Sever error")
+	}
+
+	affected, err := res.RowsAffected()
+	if err != nil {
+		log.Printf("rows effected error: %v", err)
+		return http.StatusInternalServerError, errors.New("Sever error")
+	}
+	if affected == 0 {
+		log.Printf("rows effected -> %v", affected)
+		return http.StatusNotFound, errors.New("challenge request Not found")
 	}
 
 	return 0, nil

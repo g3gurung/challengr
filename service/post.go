@@ -72,6 +72,7 @@ func GetPost(c *gin.Context) {
 
 	queryLastID := c.Query("last_id")
 	var lastID int64
+	lastID = 0
 	if queryLastID != "" {
 		lastID, err = strconv.ParseInt(queryLastID, 10, 64)
 		if err != nil {

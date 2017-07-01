@@ -76,9 +76,24 @@ func GetChellenge(c *gin.Context) {
 
 //PostChallenge func handler creates a new challenge
 func PostChallenge(c *gin.Context) {
-	userID := c.MustGet("user_id").(int64)
-	userRole := c.MustGet("role").(string)
-	weight := c.MustGet("weight").(float32)
+	userID, ok := c.MustGet("user_id").(int64)
+	if !ok {
+		log.Println("invalid token, user_id error")
+		c.JSON(http.StatusBadRequest, &model.ErrResp{Error: "Invalid token."})
+		return
+	}
+	userRole, ok := c.MustGet("role").(string)
+	if !ok {
+		log.Println("invalid token, role error")
+		c.JSON(http.StatusBadRequest, &model.ErrResp{Error: "Invalid token"})
+		return
+	}
+	weight, ok := c.MustGet("weight").(float32)
+	if !ok {
+		log.Println("invalid token, wight error")
+		c.JSON(http.StatusBadRequest, &model.ErrResp{Error: "Invalid token"})
+		return
+	}
 
 	var challenge model.Challenge
 	if err := c.BindJSON(&challenge); err != nil {
@@ -133,7 +148,12 @@ func PostChallenge(c *gin.Context) {
 
 //PutChallenge func handler updates a challenge. PS: It cant update 'name'.
 func PutChallenge(c *gin.Context) {
-	userID := c.MustGet("user_id").(int64)
+	userID, ok := c.MustGet("user_id").(int64)
+	if !ok {
+		log.Println("invalid token, user_id error")
+		c.JSON(http.StatusBadRequest, &model.ErrResp{Error: "Invalid token."})
+		return
+	}
 	paramChallengeID := c.Param("challenge_id")
 	challengeID, err := strconv.ParseInt(paramChallengeID, 10, 64)
 	if err != nil {
@@ -198,8 +218,18 @@ func PutChallenge(c *gin.Context) {
 
 //DeleteChallenge func handler deletes a challenge, if there is no post made.
 func DeleteChallenge(c *gin.Context) {
-	userID := c.MustGet("user_id").(int64)
-	role := c.MustGet("role").(string)
+	userID, ok := c.MustGet("user_id").(int64)
+	if !ok {
+		log.Println("invalid token, user_id error")
+		c.JSON(http.StatusBadRequest, &model.ErrResp{Error: "Invalid token."})
+		return
+	}
+	role, ok := c.MustGet("role").(string)
+	if !ok {
+		log.Println("invalid token, role error")
+		c.JSON(http.StatusBadRequest, &model.ErrResp{Error: "Invalid token."})
+		return
+	}
 
 	paramChallengeID := c.Param("challenge_id")
 	challengeID, err := strconv.ParseInt(paramChallengeID, 10, 64)
@@ -228,9 +258,18 @@ func DeleteChallenge(c *gin.Context) {
 }
 
 func activeDeactiveChallenge(val string, c *gin.Context) {
-	userID := c.MustGet("user_id").(int64)
-	role := c.MustGet("role").(string)
-
+	userID, ok := c.MustGet("user_id").(int64)
+	if !ok {
+		log.Println("invalid token, user_id error")
+		c.JSON(http.StatusBadRequest, &model.ErrResp{Error: "Invalid token."})
+		return
+	}
+	role, ok := c.MustGet("role").(string)
+	if !ok {
+		log.Println("invalid token, role error")
+		c.JSON(http.StatusBadRequest, &model.ErrResp{Error: "Invalid token."})
+		return
+	}
 	paramChallengeID := c.Param("challenge_id")
 	challengeID, err := strconv.ParseInt(paramChallengeID, 10, 64)
 	if err != nil {
